@@ -1,0 +1,230 @@
+---
+title: "ACP Enrollment & Funds Use Estimation"
+analysis by: "Christine Parker | ILSR | Community Broadband Networks"
+update: "2 May 2022"
+---
+
+
+```{r setup, include = FALSE, echo=FALSE}
+
+library(tidyverse)
+library(tidycensus)
+census_api_key(Sys.getenv("CENSUS_API_KEY"))
+library(stringr)
+library(arcgisbinding)
+arc.check_product()
+library(gt)
+library(extrafont)
+library(rvest)
+library(janitor)
+library(RSocrata)
+library(dplyr)
+library(readr)
+library(usdata)
+library(tinytex)
+library(scales)
+library(readxl)
+library(arsenal)
+library(lubridate)
+library(broom)
+library(xlsx)
+library(tigris)
+library(tidyverse)
+library(rgdal)
+library(maptools)
+library(mapproj)
+library(rgeos)
+library(tigris)
+library(sf)
+#font_import()# only do this one time - it takes awhile to load
+loadfonts(device = "win")
+#ttf_import(paths = "C:/Users/Michelle/AppData/Local/Microsoft/Windows/Fonts", recursive = TRUE)
+
+windowsFonts(Caecelia = windowsFont("Caecilia Light")) #creates link to font to use in tables
+
+#Options-------------------
+options(scipen = 999)
+options(digits = 1)
+```
+
+```{r Load data,cache = TRUE,cache.lazy = FALSE, echo=FALSE, results='hide'}
+#load enrollment data from spreadsheet (manually updated each week)
+ACP2MAY <- "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPWeeklyEnroll.xlsx"
+ACP <-read_excel(path = ACP2MAY, sheet = 1, col_names = TRUE) %>% clean_names() %>%
+  #summarize data by year and month - total households, broken down into tribal and non-tribal
+  group_by(month(date), year(date)) %>% summarize(allHH = max(total_households), ntHH = max(non_tribal), tHH = max(tribal)) %>% 
+  #summarize how much of the fund has been used so far - by tribal and non-tribal HH
+  mutate(nt_fund = ntHH*30, t_fund = tHH*75) %>%
+  #total fund use so far & create new year & month columns to be able to arrange...
+  mutate(TotalUsed = nt_fund + t_fund) %>% rename(month = 'month(date)', year = 'year(date)') %>% arrange(year, month)
+  #and create a month index value to use in the analysis
+   ACP$monthBYyear <- 1:nrow(ACP)
+#ACP$month[ACP$month == 12] <- 0
+
+   #creates a fund variable that can be used in the model (was used in the original model set up, but is not currently being used)
+fund <- as.data.frame(14200000000) 
+fund <- fund %>% rename(FundUsed = "14200000000")
+
+#numerical list of months to use in prediction formula below (need to change this after April)
+future <- data.frame(monthBYyear = c(14:239))
+
+#-----ACS data
+
+vars5 <- load_variables(2020, "acs5" ,cache = TRUE) #load ACS variables in the 5 yr dataset
+vars5subject <- load_variables(2020, "acs5/subject", cache = TRUE) #loads subject-table variables
+inc.vars <- c("B19001_001", "B19001_002", "B19001_003", "B19001_004", "B19001_005" , "B19001_006", "B19001_007", "B19001_008", "B19001_009" ) #loads HH income fields from 5 year dataset (2015-2019) < $45K annual
+inc.vars2 <- c("B19101_001", "B19101_002", "B19101_003", "B19101_004", "B19101_005"  ) #loads HH income fields from 5 year dataset (2015-2019)B19101_002
+HH.var <- c("S1101_C01_001") #total number of households
+
+
+HHincome.1 <- get_acs(survey = "acs5", geography = "state", variables = inc.vars, year = 2020, geometry = FALSE, moe_level = 95, state = NULL,cache_table = TRUE)%>%
+  clean_names()  #download version without geography 
+
+HHincome.2 <- HHincome.1  %>% select(-moe) %>% #wrangle into per-state records
+  pivot_wider(id_cols = c("geoid", "name"), names_from = variable, values_from = estimate )  
+  
+#calculate sum of income variables - will be total HH w/ income < 25k within past 12 mo
+HHincome.3 <- HHincome.2 %>% mutate(HHincome = rowSums((HHincome.2[,4:11]),na.rm = TRUE)) %>% 
+  select( -B19001_002,-B19001_003, -B19001_004, -B19001_005, -B19001_006, -B19001_007, -B19001_008, -B19001_009) %>%
+  mutate(HH_perc = (HHincome/B19001_001)*100) 
+#arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/HHeligible2021",data = HHincome.3)
+
+#total HHs that fall within 200% of the povertyline
+totalHH = sum(HHincome.3$HHincome) 
+
+#total HHs per state
+allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year = 2020, geometry = FALSE, state = NULL, moe_level = 95, cache_table = TRUE) %>% clean_names()
+
+#total number of HHs in US
+sum(allHH$estimate)
+
+ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPstates2MAY2022.xlsx", sheet = 1, col_names = TRUE) %>%
+  right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(perc_EoE = (total_households/h_hincome)*100)
+  
+#arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACPstates",data = ACPstates)
+
+```
+
+```{r model data,cache = TRUE,cache.lazy = FALSE, echo=FALSE}
+
+#continuous growth model - simple regression based on observed enrollment through 22 Mar 2022
+#data includes growth observered during EBB program to better inform the model
+acp_mod1 <- lm(allHH ~ monthBYyear, data = ACP) 
+glance(acp_mod1)#summary details of the model
+
+#predict total spent to 240 months past Mar 2022
+acp_predict1 <- predict.lm(acp_mod1, newdata = future, se.fit = TRUE, level = .95, interval = "prediction") 
+
+#total HHs that qualify for ACP(within 200% of poverty line for 3 person HH)
+qualHH <- sum(HHincome.3$HHincome)
+
+#35% of HHs that qualify for ACP
+qualHH35 <- qualHH*.35
+#40% of HHs that qualify for ACP
+qualHH40 <- qualHH*.40
+#45% of HHs that qualify for ACP
+qualHH45 <- qualHH*.45
+#50% of HHs that qualify for ACP
+qualHH50 <- qualHH*.5
+#75% of HHs that qualify for ACP
+qualHH75 <- qualHH*.75
+acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 5:230) %>% rename(enrolled = fit)#create index which represents months - currently predicting May 2022 and beyond
+
+#create ACP-only vector (selects only months after switch from EBB to ACP)
+ACP.only <- ACP %>% subset(monthBYyear >= 9) %>% select(month, allHH) %>% rename(enrolled = allHH)
+
+#calculates amount of fund used until %50 enrollment is observed
+enroll35 <- acp_ToPlot1 %>% subset(enrolled < qualHH35) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll35b <- enroll35 %>% bind_rows(enroll35[rep(nrow(enroll35), 36),] %>%
+              mutate(month = month + seq(36))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll35b",col.names = TRUE, append = TRUE)
+
+#calculates amount of fund used until %40 enrollment is observed
+enroll40 <- acp_ToPlot1 %>% subset(enrolled < qualHH40) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll40b <- enroll40 %>% bind_rows(enroll40[rep(nrow(enroll40), 24),] %>%
+              mutate(month = month + seq(24))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll40",col.names = TRUE, append = TRUE)
+
+#calculates amount of fund used until %45 enrollment is observed
+enroll45 <- acp_ToPlot1 %>% subset(enrolled < qualHH45) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 24),] %>%
+              mutate(month = month + seq(24))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll45",col.names = TRUE, append = TRUE)
+
+#calculates amount of fund used until %50 enrollment is observed
+enroll50 <- acp_ToPlot1 %>% subset(enrolled < qualHH50) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll50b <- enroll50 %>% bind_rows(enroll50[rep(nrow(enroll50), 24),] %>%
+              mutate(month = month + seq(24))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll50",col.names = TRUE, append = TRUE)
+
+#calculates amount of fund used until %75 enrollment is observed
+enroll75 <- acp_ToPlot1 %>% subset(enrolled < qualHH75) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll75b <- enroll75 %>% bind_rows(enroll75[rep(nrow(enroll75), 24),] %>%
+              mutate(month = month + seq(24))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll75",col.names = TRUE, append = TRUE)
+
+#calculates amount of fund used until %100 enrollment is observed
+enroll100 <- acp_ToPlot1 %>% subset(enrolled < qualHH) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll100b <- enroll100 %>% bind_rows(enroll100[rep(nrow(enroll100), 24),] %>%
+              mutate(month = month + seq(24))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
+           sheetName = "enroll100",col.names = TRUE, append = TRUE)
+
+
+```
+
+```{r Map data,cache = TRUE,cache.lazy = FALSE, echo=FALSE}
+
+#us <- states(cb = TRUE, year = 2020)
+us <- readOGR(dsn = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/Maps/TheFabric/TheFabric.gdb",
+           layer = "USA_States_Generalized", verbose = FALSE) %>% 
+  subset(STATE_FIPS != "69" & STATE_FIPS != "66" & STATE_FIPS != "60" & STATE_FIPS != "72" & STATE_FIPS != "78")
+us_laea <- spTransform(us, CRS("+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs"))
+us_laea@data$id <- rownames(us_laea@data)
+plot(us_laea)
+
+alaska <- us_laea[us_laea$STATE_FIPS=="02",]
+#alaska <- elide(alaska, rotate=-39)
+alaska <- elide(alaska, scale=max(apply(bbox(alaska), 1, diff)) / 2.3)
+#alaska <- elide(alaska, shift=c(-3000000, 1200000))
+alaska <- elide(alaska, shift=c(-2100000, -2500000)) #(shifts Alaska to SW also)
+proj4string(alaska) <- proj4string(us_laea)
+
+hawaii <- us_laea[us_laea$STATE_FIPS=="15",]
+hawaii <- elide(hawaii, rotate=-35)
+#hawaii <- elide(hawaii, shift=c(3500000, -1600000))
+hawaii <- elide(hawaii, shift=c(5400000, -1400000)) #(shifts HI closer to TX)
+proj4string(hawaii) <- proj4string(us_laea)
+
+us_laea <- us_laea[!us_laea$STATE_FIPS %in% c("02", "15"),] # Remove old AK and HI
+us_laea <- rbind(us_laea, alaska, hawaii) # Add in shifted AK and HI
+
+AllStates <- spTransform(us_laea, proj4string(us))
+plot(AllStates)
+
+#write edited version to gdb
+arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/StateBounds", data = AllStates)
+```
