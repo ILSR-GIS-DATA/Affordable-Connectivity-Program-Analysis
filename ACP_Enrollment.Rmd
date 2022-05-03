@@ -99,8 +99,12 @@ allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year 
 sum(allHH$estimate)
 
 ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPstates2MAY2022.xlsx", sheet = 1, col_names = TRUE) %>%
-  right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(perc_EoE = (total_households/h_hincome)*100)
-  
+  right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(perc_EoE = (total_households/h_hincome)*100) %>%
+  rename("totalHH.US"="b19001_001", "eligible.HH"="h_hincome", "percent.eligible" ="hh_perc", "perc.EligibleEnrolled" = "perc_EoE") %>%
+  select(-geoid)
+#write to xlsx
+write.xlsx(x = ACPstates, "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACPbyState.xlsx")
+#write to map gdb  
 #arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACPstates",data = ACPstates)
 
 ```

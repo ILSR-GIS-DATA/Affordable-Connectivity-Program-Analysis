@@ -3,10 +3,11 @@
  
 
 # ACP_Enrollment.Rmd
-This script is set up to summarize & estimate the total ACP funds that have been used. It also includes code to model two scenarios of enrollment (50% and 100%) based on the number of households (HH) that qualify for ACP (HH income within 200% of the poverty line), and when the funds would be depleted according to those scenarios.
+This script is set up to summarize & estimate the total ACP funds that have been used. It also includes code to model various scenarios of enrollment (35 - 75%) based on the number of households (HH) that qualify for ACP (HH income within 200% of the poverty line), and when the funds would be depleted according to those scenarios.
 
 # MAP - Percent of Eligible Households Enrolled
-The values displayed in this map were calculated by first determining the number of households (HHs) eligible for ACP in each state, and then dividing the total number of HHs enrolled per state by that value. 
+The values displayed in this map were calculated by first determining the number of households (HHs) eligible for ACP in each state, and then dividing the total number of HHs enrolled per state by that value. At the time of this writing, the mean national household size is 2.51, so we rounded up to a 3 person household and determined the threshold value for ACP eligibility based on annual HH income was 43,920. We combined estimated numbers of households from the ACS table B19001, combining variables B19001_002 - B19001_009, to determine the total number of households that have an income that is less than or equal to $44,999 (the maximum value in the income range of B19001_009). We used this combined value as the total HHs eligible for ACP in the equation below.  
+
 Percent eligible HHs (per state) = (Total HHs enrolled / Total HHs eligible) * 100
 
 # PREDICTIONS When Will ACP Funds Be Depleted?
