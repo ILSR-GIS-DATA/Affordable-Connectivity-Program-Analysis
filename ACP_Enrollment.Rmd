@@ -93,12 +93,13 @@ HHincome.3 <- HHincome.2 %>% mutate(HHincome = rowSums((HHincome.2[,4:11]),na.rm
 totalHH = sum(HHincome.3$HHincome) 
 
 #total HHs per state
-allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year = 2020, geometry = FALSE, state = NULL, moe_level = 95, cache_table = TRUE) %>% clean_names()
+allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year = 2020, geometry = TRUE, state = NULL, moe_level = 95, cache_table = TRUE) %>% clean_names() %>% shift_geometry(preserve_area = FALSE, position = c("below","outside"))%>% 
+  subset(geoid != "69" & geoid != "66" & geoid != "60" & geoid != "72" & geoid != "78")
 
 #total number of HHs in US
 sum(allHH$estimate)
 
-ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPstates2MAY2022.xlsx", sheet = 1, col_names = TRUE) %>%
+ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPstates2MAY2022.xlsx", sheet = 1, col_names = TRUE)  %>%
   right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(perc_EoE = (total_households/h_hincome)*100) %>%
   rename("totalHH.US"="b19001_001", "eligible.HH"="h_hincome", "percent.eligible" ="hh_perc", "perc.EligibleEnrolled" = "perc_EoE") %>%
   select(-geoid)
@@ -186,6 +187,8 @@ enroll75b <- enroll75 %>% bind_rows(enroll75[rep(nrow(enroll75), 24),] %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
 write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
            sheetName = "enroll75",col.names = TRUE, append = TRUE)
+
+spend.rate <- lm(cum.spent ~ month, data = enroll75b) #estimate monthly spending rate
 
 #calculates amount of fund used until %100 enrollment is observed
 enroll100 <- acp_ToPlot1 %>% subset(enrolled < qualHH) %>% bind_rows(ACP.only) %>% arrange(month) 
