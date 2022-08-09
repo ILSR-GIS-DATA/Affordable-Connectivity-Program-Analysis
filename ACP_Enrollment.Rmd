@@ -49,8 +49,8 @@ options(digits = 1)
 
 ```{r Load data,cache = TRUE,cache.lazy = FALSE, echo=FALSE, results='hide'}
 #load enrollment data from spreadsheet (manually updated each week)
-ACP2MAY <- "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPWeeklyEnroll.xlsx"
-ACP <-read_excel(path = ACP2MAY, sheet = 1, col_names = TRUE) %>% clean_names() %>%
+ACP20June <- "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPWeeklyEnroll.xlsx"
+ACP <-read_excel(path = ACP20June, sheet = 2, col_names = TRUE) %>% clean_names() %>%
   #summarize data by year and month - total households, broken down into tribal and non-tribal
   group_by(month(date), year(date)) %>% summarize(allHH = max(total_households), ntHH = max(non_tribal), tHH = max(tribal)) %>% 
   #summarize how much of the fund has been used so far - by tribal and non-tribal HH
@@ -65,14 +65,14 @@ ACP <-read_excel(path = ACP2MAY, sheet = 1, col_names = TRUE) %>% clean_names() 
 fund <- as.data.frame(14200000000) 
 fund <- fund %>% rename(FundUsed = "14200000000")
 
-#numerical list of months to use in prediction formula below (need to change this after April)
-future <- data.frame(monthBYyear = c(14:239))
+#numerical list of months to use in prediction formula below (need to change this after June)
+future <- data.frame(monthBYyear = c(15:240))
 
 #-----ACS data
 
 vars5 <- load_variables(2020, "acs5" ,cache = TRUE) #load ACS variables in the 5 yr dataset
 vars5subject <- load_variables(2020, "acs5/subject", cache = TRUE) #loads subject-table variables
-inc.vars <- c("B19001_001", "B19001_002", "B19001_003", "B19001_004", "B19001_005" , "B19001_006", "B19001_007", "B19001_008", "B19001_009" ) #loads HH income fields from 5 year dataset (2015-2019) < $45K annual
+inc.vars <- c("B19001_001", "B19001_002", "B19001_003", "B19001_004", "B19001_005" , "B19001_006", "B19001_007", "B19001_008", "B19001_009" ) #loads HH income fields from 5 year dataset (2016-2020) < $45K annual
 inc.vars2 <- c("B19101_001", "B19101_002", "B19101_003", "B19101_004", "B19101_005"  ) #loads HH income fields from 5 year dataset (2015-2019)B19101_002
 HH.var <- c("S1101_C01_001") #total number of households
 
@@ -93,20 +93,24 @@ HHincome.3 <- HHincome.2 %>% mutate(HHincome = rowSums((HHincome.2[,4:11]),na.rm
 totalHH = sum(HHincome.3$HHincome) 
 
 #total HHs per state
-allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year = 2020, geometry = TRUE, state = NULL, moe_level = 95, cache_table = TRUE) %>% clean_names() %>% shift_geometry(preserve_area = FALSE, position = c("below","outside"))%>% 
+allHH <- get_acs(survey = "acs5", geography = "state", variables = HH.var, year = 2020, geometry = TRUE, state = NULL, moe_level = 95, cache_table = TRUE) %>% clean_names() %>% #shift_geometry(preserve_area = FALSE, position = c("below","outside"))%>% 
   subset(geoid != "69" & geoid != "66" & geoid != "60" & geoid != "72" & geoid != "78")
 
 #total number of HHs in US
 sum(allHH$estimate)
 
-ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPstates2MAY2022.xlsx", sheet = 1, col_names = TRUE)  %>%
-  right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(perc_EoE = (total_households/h_hincome)*100) %>%
-  rename("totalHH.US"="b19001_001", "eligible.HH"="h_hincome", "percent.eligible" ="hh_perc", "perc.EligibleEnrolled" = "perc_EoE") %>%
+ACPstates <-read_excel(path = "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACPWeeklyEnroll.xlsx", sheet = 3, col_names = TRUE)  %>%
+  right_join(y = HHincome.3, by = c("State" = "name" )) %>% clean_names() %>% mutate(HHEoE_perc
+ = (hh_june20/h_hincome)*100) %>% ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
+  rename("totalHH"="b19001_001", "HHqualify"="h_hincome", "HHqualify_perc" ="hh_perc") %>%
   select(-geoid)
 #write to xlsx
 write.xlsx(x = ACPstates, "C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACPbyState.xlsx")
 #write to map gdb  
-#arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACPstates",data = ACPstates)
+#arc.write("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACPstates20jUNE2022",data = ACPstates)
+
+#also write to google drive workbook for ACP dashboard
+write.xlsx("G:/My Drive/ACPdashboard/ACP_enroll.xlsx", sheetName = "EnrollByState", x = ACPstates, append = TRUE)
 
 ```
 
@@ -133,7 +137,7 @@ qualHH45 <- qualHH*.45
 qualHH50 <- qualHH*.5
 #75% of HHs that qualify for ACP
 qualHH75 <- qualHH*.75
-acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 5:230) %>% rename(enrolled = fit)#create index which represents months - currently predicting May 2022 and beyond
+acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 7:232) %>% rename(enrolled = fit)#create index which represents months - currently predicting May 2022 and beyond
 
 #create ACP-only vector (selects only months after switch from EBB to ACP)
 ACP.only <- ACP %>% subset(monthBYyear >= 9) %>% select(month, allHH) %>% rename(enrolled = allHH)
@@ -145,8 +149,10 @@ enroll35b <- enroll35 %>% bind_rows(enroll35[rep(nrow(enroll35), 36),] %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/totalHH) ,perc.used = (cum.spent /14200000000)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+  mutate(cum.spent25 = cum.spent*1.025) %>%
 write.xlsx("C:/Users/Michelle/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/enrollACP.xlsx",
-           sheetName = "enroll35b",col.names = TRUE, append = TRUE)
+           sheetName = "enroll35b",col.names = TRUE, append = TRUE) 
+
 
 #calculates amount of fund used until %40 enrollment is observed
 enroll40 <- acp_ToPlot1 %>% subset(enrolled < qualHH40) %>% bind_rows(ACP.only) %>% arrange(month) 
