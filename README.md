@@ -15,6 +15,7 @@ We collected data from:
 1. Universal Service Administrative Co. ACP Enrollment and Claims Tracker (https://www.usac.org/about/affordable-connectivity-program/acp-enrollment-and-claims-tracker/#enrollment-by-state) (last updated on 25 APR 2022)
 2. Emergency Broadband Benefit Program Enrollments and Claims Tracker (https://www.usac.org/about/emergency-broadband-benefit-program/emergency-broadband-benefit-program-enrollments-and-claims-tracker/)
 3. American Community Survey (5-year 2016 - 2020; Table B19001)
+4. Dept. of Health and Human Services Poverty Tool (https://aspe.hhs.gov/sites/default/files/private/aspe-files/107166/2021-percentage-poverty-tool.xlsx)
 
  
 The nationwide enrollment data for the Emergency Broadband Benefit and the Affordable Connectivity Program (combined) were used as the response variable in a linear regression model. A numeric index value representing the month-year (i.e., 1 - 12) of the fund since its start was used as the predictor variable. The resulting beta estimate from this model was used to generate several enrollment predictions ranging from 35 - 75%. For each prediction, we summarized the proportion of the fund ($14.2B) spent, up to 36 months.
