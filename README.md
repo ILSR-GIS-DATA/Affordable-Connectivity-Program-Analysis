@@ -1,6 +1,5 @@
 # Affordable Connectivity Program Analysis
- Details about ACP maps and analysis 
- 
+ Details about ACP maps and analysis. To simplify the predictive model, we only use the $30/month value to calculate the fund depletion of different enrollment caps. To account for the higher $75/month subsidy available to Tribal households (~192,000 as of August 29, 2022), as well as the one-time, $100 device benefit that each household can claim (constituting just under 9 percent of total expenditures as of 8/29/22), we add 2.5 percent to the funds spent each month.
 
 # ACP_Enrollment.Rmd
 This script is set up to summarize & estimate the total ACP funds that have been used. It also includes code to model various scenarios of enrollment (35 - 75%) based on the number of households (HH) that qualify for ACP (HH income within 200% of the poverty line), and when the funds would be depleted according to those scenarios.
