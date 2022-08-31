@@ -24,7 +24,7 @@
 
 **HHqualify_perc:** Estimated percent of HH in that zip code that are eligible for ACP\
 
-**HHEoE_perc:** Estimated percent of HH in that zip code that are enrolled in ACP of the HH that are eligible     
+**HHEoE_perc:** Estimated percent of HH in that zip code that are enrolled in ACP of the HH that are eligible
 
 **city:** City name at that zipcode - only reported for cities that were included in this analysis by Benton Foundation for Broadband and Society: <https://www.benton.org/blog/affordable-connectivity-plan-enrollment-and-digital-equity-planning>
 
@@ -42,7 +42,7 @@
 
 **month.spent:** Estimated funds spent per month on Internet access subscription (at \$30/mo/HH).\
 
-**cum.spent:** Estimated cumulative funds spent per month on Internet access subscription (at \$30/mo/HH).  
+**cum.spent:** Estimated cumulative funds spent per month on Internet access subscription (at \$30/mo/HH).
 
 **perc.used:** Estimated percent of \$15.5 B spent on Internet access subscription.\
 
