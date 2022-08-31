@@ -1,6 +1,6 @@
-ACP Dashboard Data Definitions
+#ACP Dashboard Data Definitions
 
-ACP_DASHBOARD_EnrollByState.csv 
+##ACP_DASHBOARD_EnrollByState.csv 
   geoid: 2 digits code representing the state 
   state: state name 
   totalHH: estimated total households in the state  
@@ -11,7 +11,7 @@ ACP_DASHBOARD_EnrollByState.csv
 
 
 
-ACP_DASHBOARD_ZipData.shp (and associated files)  
+##ACP_DASHBOARD_ZipData.shp (and associated files)  
 	zipcode: zipcode (formatted as character) 
 	enrollments: number of households enrolled in ACP 
 	totalHH: Total estimated number of HH in that zip code according to ACS 2015-2019 
@@ -21,7 +21,7 @@ ACP_DASHBOARD_ZipData.shp (and associated files)
 	city: City name at that zipcode - only reported for cities that were included in this analysis by Benton Foundation for Broadband and Society: https://www.benton.org/blog/affordable-connectivity-plan-enrollment-and-digital-equity-planning 
 	
 	
-ACP_DASHBOARD_ModelData.csv - data set used in the model dashboard element  
+##ACP_DASHBOARD_ModelData.csv - data set used in the model dashboard element  
   month: month-year starting with Jan 2022 (when EBB changed to ACP)  
   enrolled: predicted number of enrolled households   
   lwr: Lower 95% confidence interval  
