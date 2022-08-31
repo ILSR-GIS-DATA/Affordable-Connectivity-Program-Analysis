@@ -1,5 +1,7 @@
 # Affordable Connectivity Program (ACP) Analysis
- Details about ACP maps and analysis 
+ Details and methdology supporting the ACP Dashboard  
+ https://apps.communitynets.org/acpdashboard/
+ 
  
 
 # ACP_Dashboard.Rmd
@@ -22,7 +24,7 @@ PREDICTIONS - When Will ACP Funds Be Depleted?
 The nationwide enrollment data for the Emergency Broadband Benefit and the Affordable Connectivity Program (combined) were used as the response variable in a linear regression model. A numeric index value representing the month-year (i.e., 1 - 12) of the fund since its start was used as the predictor variable. The resulting beta estimate from this model was used to generate several enrollment predictions in which we limit enrollment to some percentage of the eligible HHs. We modeled the current percent enrolled of eligible HHs, 40%, 45%, 50%, and continuous enrollment. For each prediction, we also calculated the proportion of the fund ($15.5B [remaining EBB + ACP]) spent, up to 36 months to estimate when the fund would be depleted if we reach and maintain (but do not exceed) that level of enrollment.
 
 Important note: 
-While 200% FPL is a generous guideline to include HHs that qualify for other income and disability - based programs. However, it is important to keep in mind that additional households may not fall within the 200% FPL, but may still qualify for other government programs that automatically qualify them for ACP. These HHs are not yet included in our estimates and therefore our estimates of HH eligibility are likely lower than the true population of eligible HHs. This is something we plan to incorporate in future versions of this dashboard. 
+While 200% FPL is a generous guideline to include HHs beyond those that already qualify for other income- and disability- based programs. However, it is important to keep in mind that additional households may not fall within the 200% FPL, but may still qualify for other government programs that automatically qualify them for ACP. These HHs are not yet included in our estimates and therefore our estimates of HH eligibility are likely lower than the true population of eligible HHs. This is something we plan to incorporate in future versions of this dashboard. 
 
 
 
