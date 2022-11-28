@@ -1,7 +1,7 @@
 ---
 title: "ACP Enrollment Dashboard"
 author: "Christine Parker | ILSR"
-date: "31 Aug 2022"
+date: "15 Nov 2022"
 
 ---
 
@@ -48,82 +48,100 @@ options(tigris_use_cache = TRUE)
 ```{r Load & Edit Data, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
 
 #load ACP subcriber & claim data (zip code) - these data are updated infrequently
-ACP_ClaimsData <- read_excel("G:/My Drive/ACPdashboard/ACP_ClaimsData_Jan-Aug-2022.xlsx", 
-    sheet = "RawData", col_types = c("date", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric"))
+ACP_ClaimsData <- read_excel("G:/My Drive/ACPdashboard/ACP-Claims-by-Zip-January-September-2022.xlsx", 
+    sheet = 1, col_types = c("date", 
+        "text", "numeric", "numeric", 
+        "numeric", "numeric", "numeric" 
+        ))
+
 names(ACP_ClaimsData)
-claims <- ACP_ClaimsData %>% select("Data Month","Zip Code","Total Claimed Subscribers", "Total Subscribers") %>%
-  rename("month" = "Data Month", "zipcode" = "Zip Code", "claimed_subsc" = "Total Claimed Subscribers", "all_subsc" = "Total Subscribers")
+
+claims <- ACP_ClaimsData %>% select("data_month","Zip Code","total_claimed_subscribers") %>%
+  rename("month" = "data_month", "zipcode" = "Zip Code", "claimed_subsc" = "total_claimed_subscribers")
 
 #make sure all zipcodes have leading zeros & convert to character
 claims$zipcode <-  str_pad(claims$zipcode, width = 5, side = c("left"), pad = 0)
 claims$zipcode <- as.character(claims$zipcode)
 
-claims_zcta <- claims %>% group_by(zipcode) %>% subset(month == max(month)) %>%#create dataset of claimed subscribers per zipcode for most recent month
+ACP_HHData <- read_excel("G:/My Drive/ACPdashboard/ACP-Households-by-Zip-January-September-2022.xlsx", 
+    sheet = 1) %>% select("Data Month","Zip Code","Total Subscribers") %>%
+  rename("month" = "Data Month", "zipcode" = "Zip Code", "all_subsc" = "Total Subscribers")
+
+#make sure all zipcodes have leading zeros & convert to character
+ACP_HHData$zipcode <-  str_pad(ACP_HHData$zipcode, width = 5, side = c("left"), pad = 0)
+ACP_HHData$zipcode <- as.character(ACP_HHData$zipcode)
+
+claims2 <- claims %>% full_join(y = ACP_HHData, by = c("zipcode", "month")) %>% replace(is.na(.), 0) 
+
+claims_zcta <- claims2 %>% group_by(zipcode) %>% subset(month == max(month)) %>% #create dataset of claimed subscribers per zipcode for most recent month
   rename("claimed" = "claimed_subsc") %>% ungroup() %>% select(zipcode, claimed)
-claims_US <- claims %>% group_by(zipcode) %>% subset(month == max(month)) %>% select(claimed_subsc,all_subsc) %>% ungroup() %>%
-  summarize(total_claimed = sum(na.omit(claimed_subsc)), total_enrolled = sum(all_subsc))
+
+#create table of claimed, enrolled, and the gap between those values
+claims_US <- claims2 %>% group_by(month) %>% select(month,claimed_subsc,all_subsc) %>% 
+  summarize(total_claimed = sum(na.omit(claimed_subsc)), total_enrolled = sum(all_subsc), gap = total_enrolled - total_claimed)
+
+total_claims <- claims2 %>% summarize(total_claimed = sum(claimed_subsc), total_enrolled = sum(all_subsc))
 
 #-------------------------------------------------------
 #load & edit county claim data for state map
-ACP_county_claims <- read_excel("G:/My Drive/ACPdashboard/ACP-Households-and-Claims-by-County-January-August-2022.xlsx", 
-    col_types = c("date", "text", "text", 
-        "text", "text", "text", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric", "numeric", 
-        "numeric", "numeric"))
+ACP_county_claims <- read_excel("G:/My Drive/ACPdashboard/ACP-Claims-by-County-January-September-2022.xlsx")
 
-county_claims <- ACP_county_claims %>% select("Data Month","State FIPS","State Name","County Name", "Total Subscribers", "Total Claimed Subscribers") %>%
-  rename("month" = "Data Month", "state_fips" = "State FIPS", "state_name" = "State Name","county" = "County Name","claimed" = "Total Claimed Subscribers", "subscribed" = "Total Subscribers") %>%
+county_claims <- ACP_county_claims %>% select("data_month","state_fips","state_name","county_name", "total_claimed_subscribers") %>%
+  rename("month" = "data_month","county" = "county_name","claimed" = "total_claimed_subscribers") %>%
   mutate(state_name = str_to_sentence(state_name))
 
-claims_state <- county_claims %>% group_by(county, state_fips) %>% subset(month == max(month)) %>%#create dataset of claimed subscribers per county/state for most recent month
+county_claims2 <- county_claims %>% group_by(county, state_fips) %>% subset(month == max(month)) %>% #create dataset of claimed subscribers per county/state for most recent month
    ungroup() %>% select(state_fips, claimed) %>% group_by(state_fips) %>% summarize(claimed = sum(na.omit(claimed)))
+
+ACP_county_HH <- read_excel("G:/My Drive/ACPdashboard/ACP-Households-by-County-January-September-2022.xlsx")
+
+county_HH <- ACP_county_HH %>% select("Data Month","State FIPS","State Name","County Name", "Total Subscribers") %>%
+  rename("month" = "Data Month", "state_fips" = "State FIPS", "state_name" = "State Name","county" = "County Name", "subscribed" = "Total Subscribers") %>%
+  mutate(state_name = str_to_sentence(state_name)) %>% subset(month == max(month)) %>% 
+   ungroup() %>% select(state_fips, subscribed) %>% group_by(state_fips) %>% summarize(subscribed = sum(na.omit(subscribed)))
+
+claims_state <- county_claims2 %>% full_join(y = county_HH, by = "state_fips") #dataset of most recent enrollment & claims data for each state
+
 
 #---------------------------------------------------\
 #load & edit data for modeling
-EBB_ACP_claims <- read_excel("G:/My Drive/ACPdashboard/EBB-ACP_ClaimsData_Aug-2022.xlsx", 
-     sheet = "EBB_ACP", col_types = c("date", 
-         "text", "numeric", "numeric", "numeric", 
-         "numeric", "numeric", "numeric", 
-         "numeric", "numeric", "numeric", 
-         "numeric", "numeric", "numeric", 
-         "numeric", "numeric", "numeric"))
-
-EBB_ACP <- EBB_ACP_claims %>% 
-  select("Data Month","Zip Code","Total Claimed Subscribers", "Total Subscribers", "Total Support") %>%
-  rename("month" = "Data Month", "zipcode" = "Zip Code", "claimed" = "Total Claimed Subscribers", "subscribed" = "Total Subscribers","support" = "Total Support")
-
-#make sure all zipcodes have leading zeros & convert to character
-EBB_ACP$zipcode <-  str_pad(EBB_ACP$zipcode, width = 5, side = c("left"), pad = 0)
-EBB_ACP$zipcode <- as.character(EBB_ACP$zipcode)
-
-EBB_ACP <- EBB_ACP %>% mutate(zipcode = as.factor(zipcode),year = as.numeric(year(month)) ,month = as.numeric(month(month)))
-#and create a month index value to use in the analysis
-   EBB_ACP$monthBYyear <- 1:nrow(EBB_ACP)
+# EBB_ACP_claims <- read_excel("G:/My Drive/ACPdashboard/EBB-ACP_ClaimsData_Aug-2022.xlsx", 
+#      sheet = "EBB_ACP", col_types = c("date", 
+#          "text", "numeric", "numeric", "numeric", 
+#          "numeric", "numeric", "numeric", 
+#          "numeric", "numeric", "numeric", 
+#          "numeric", "numeric", "numeric", 
+#          "numeric", "numeric", "numeric"))
+# 
+# EBB_ACP <- EBB_ACP_claims %>% 
+#   select("Data Month","Zip Code","Total Claimed Subscribers", "Total Subscribers", "Total Support") %>%
+#   rename("month" = "Data Month", "zipcode" = "Zip Code", "claimed" = "Total Claimed Subscribers", "subscribed" = "Total Subscribers","support" = "Total Support")
+# 
+# #make sure all zipcodes have leading zeros & convert to character
+# EBB_ACP$zipcode <-  str_pad(EBB_ACP$zipcode, width = 5, side = c("left"), pad = 0)
+# EBB_ACP$zipcode <- as.character(EBB_ACP$zipcode)
+# 
+# EBB_ACP <- EBB_ACP %>% mutate(zipcode = as.factor(zipcode),year = as.numeric(year(month)) ,month = as.numeric(month(month)))
+# #and create a month index value to use in the analysis
+#    EBB_ACP$monthBYyear <- 1:nrow(EBB_ACP)
 #---------------------------------------------------
 #load ACP enrollment data from spreadsheet (manually updated each week)
 #edit the variable name to reflect the most recent data update
-ACP17oct <- "G:/My Drive/ACPdashboard/ACPWeeklyEnroll.xlsx"
+ACP14nov <- "G:/My Drive/ACPdashboard/ACPWeeklyEnroll.xlsx"
 
 data(fips_codes) #creates dataframe of all state and county fips codes
 fips_states <- fips_codes %>% select(state_name,state,state_code) 
 fips_states <- distinct(fips_states, .keep_all = TRUE) #condense down to single row per state
 
 ##loads enrollment by zipcode data (this dataset does not include subscription vs. device & claims details)
-acp_zcta <- read_excel("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACP-Enrollments-by-Zip-Code-as-of-September-1-2022.xlsx", sheet = 1, col_names = TRUE) %>% clean_names() 
-
+acp_zcta <- read_excel("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/ACP/ACP-Enrollments-by-Zip-Code-as-of-October-1-2022.xlsx", sheet = 1, col_names = TRUE) %>% clean_names() %>% rename("enrollments" = "subscribers_in_zip") %>% select(zipcode, enrollments)
+#make sure all zipcodes have leading zeros & convert to character
+acp_zcta$zipcode <-  str_pad(acp_zcta$zipcode, width = 5, side = c("left"), pad = 0)
+acp_zcta$zipcode <- as.character(acp_zcta$zipcode)
 
 ##UPDATE THIS EVERY TIME
-ACPstates <-read_excel(path = ACP17oct, sheet = 4, col_names = TRUE) %>%
-  select(State,HH_oct17) %>% 
+ACPstates <-read_excel(path = ACP14nov, sheet = 4, col_names = TRUE) %>%
+  select(State,HH_nov14) %>% 
   left_join(y = fips_states, by = c("State" = "state_name"))
 
 #-------------------------------------------------------
@@ -145,7 +163,7 @@ usZIP <- zctas(cb = TRUE, year = 2019)
 
 #-------------------------------------------------------
 #NATIONAL DATA
-acp_national <-read_excel(path = ACP17oct, sheet = 2, col_names = TRUE) %>% clean_names() %>%
+acp_national <-read_excel(path = ACP14nov, sheet = 2, col_names = TRUE) %>% clean_names() %>%
   #summarize data by year and month - total households, broken down into tribal and non-tribal
   group_by(month(date), year(date)) %>% summarize(allHH = max(total_households), ntHH = max(non_tribal), tHH = max(tribal)) %>% 
   #estimate how much of the fund has been used so far - using tribal and non-tribal HH enrollment
@@ -158,8 +176,8 @@ acp_national <-read_excel(path = ACP17oct, sheet = 2, col_names = TRUE) %>% clea
    
 #-------------------------------------------------------   
 #numerical list of months to use in prediction formula below (need to change this for each new month)
-future <- data.frame(monthBYyear = c(18:240))
-future.claimed <- data.frame(monthBYyear = c(9:240))
+future <- data.frame(monthBYyear = c(20:240))
+#future.claimed <- data.frame(monthBYyear = c(9:240))
 ```
 
 ```{r ACP ZCTA Analysis, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
@@ -168,11 +186,6 @@ future.claimed <- data.frame(monthBYyear = c(9:240))
 #vars5 <- load_variables(2020, "acs5" ,cache = TRUE) #load ACS variables in the 5 yr dataset
 #vars5subject <- load_variables(2020, "acs5/subject", cache = TRUE) #loads subject-table variables
 #subscript.vars <- c("B28011_002","B28011_004", "B28011_008") #1. Has an internet subscription 2. Has a broadband internet subscription 3. no Internet access
-
-
-#make sure all zipcodes have leading zeros & convert to character
-acp_zcta$zipcode <-  str_pad(acp_zcta$zipcode, width = 5, side = c("left"), pad = 0)
-acp_zcta$zipcode <- as.character(acp_zcta$zipcode)
 
 
 #import the list of zcta's for AK and HI
@@ -250,16 +263,16 @@ acp.service <- acp_zcta %>% select(zipcode, enrollments) %>%
                               ifelse(HHEoE_perc == Inf, 101,HHEoE_perc))) #if % is greater than 100 or Inf, then set as 101 %
 
 
-#write acp claims by zcta to gdb
-acp.claims <- claims_zcta %>% select(zipcode, claimed) %>% 
-  subset(zipcode != "00000") %>% #removes the row with redacted zipcodes
-  left_join(y = HHincome_zcta.3, by = c("zipcode" = "geoid")) %>% 
-  mutate(HHCoE_perc = (claimed/hh_qualify*100)) %>% #calculate the percent of claimed of eligible HH's
-  rename("totalHH" = "total_hh") %>% 
-  mutate(HHEoE_perc = ifelse(HHCoE_perc >= 100, 101,
-                              ifelse(HHCoE_perc == Inf, 101,HHCoE_perc))) #if % is greater than 100 or Inf, then set as 101 %
+# #write acp claims by zcta to gdb
+# acp.claims <- claims_zcta %>% select(zipcode, claimed) %>% 
+#   subset(zipcode != "00000") %>% #removes the row with redacted zipcodes
+#   left_join(y = HHincome_zcta.3, by = c("zipcode" = "geoid")) %>% 
+#   mutate(HHCoE_perc = (claimed/hh_qualify*100)) %>% #calculate the percent of claimed of eligible HH's
+#   rename("totalHH" = "total_hh") %>% 
+#   mutate(HHCoE_perc = ifelse(HHCoE_perc >= 100, 101,
+#                               ifelse(HHCoE_perc == Inf, 101,HHCoE_perc))) #if % is greater than 100 or Inf, then set as 101 %
 
-#edited this (Aug 16) to include only Benton cities in dataset for dashboard 
+#edited this (Nov 16) to include only Benton cities in dataset for dashboard 
 #groups the data by city and then summarizes to great city-level enrollment estimates (not averages)
 acp.serviceBenton1 <- acp.service %>% left_join(y = bentonzips, by = "zipcode") %>% subset(is.na(city) == FALSE) %>% select(city, enrollments, totalHH, hh_qualify) %>% group_by(city) %>%
   dplyr::summarize(enrollments = sum(enrollments), totalHH = sum(totalHH), hh_qualify = sum(hh_qualify),
@@ -267,10 +280,10 @@ acp.serviceBenton1 <- acp.service %>% left_join(y = bentonzips, by = "zipcode") 
 
 #edited this (Oct 18) to use claim data instead of enrollments in numerators
 #groups the data by city and then summarizes to great city-level enrollment estimates (not averages)
-acp.claimed_Benton1 <- acp.claims %>% left_join(y = bentonzips, by = "zipcode") %>% subset(is.na(city) == FALSE) %>% select(city, claimed, totalHH, hh_qualify) %>% group_by(city) %>%
-  dplyr::summarize(claimed = sum(na.omit(claimed)), totalHH = sum(totalHH), hh_qualify = sum(hh_qualify),
-            HHCoE_perc = (claimed/hh_qualify)*100) %>% rename("HHqualify" = "hh_qualify") %>%
-  merge(y = acp.serviceBenton1)
+# acp.claimed_Benton1 <- acp.claims %>% left_join(y = bentonzips, by = "zipcode") %>% subset(is.na(city) == FALSE) %>% select(city, claimed, totalHH, hh_qualify) %>% group_by(city) %>%
+#   dplyr::summarize(claimed = sum(na.omit(claimed)), totalHH = sum(totalHH), hh_qualify = sum(hh_qualify),
+#             HHCoE_perc = (claimed/hh_qualify)*100) %>% rename("HHqualify" = "hh_qualify") %>%
+#   merge(y = acp.serviceBenton1)
 
 
 
@@ -293,32 +306,34 @@ US_enrolled <- acp_national %>% subset(monthBYyear == max.date) %>% select(month
 US_HHEoE <- (US_enrolled$allHH/US_eligibleHH)*100
 
 #percent of eligible HH that are claimed
-US_HHCoE <- (claims_US$total_claimed/US_eligibleHH)*100
+# US_HHCoE <- (claims_US$total_claimed/US_eligibleHH)*100
 
 #total number of claimed HH
-US_claimed <- sum(claims_US$total_claimed)
+#US_claimed <- sum(claims_US$total_claimed)
 
 #this version of acp.serviceBenton includes all subscriber zipcode data to be written to the ACP geodb in ArcGIS, projected, and then exported as a .shp.
 acp.serviceBenton2 <- acp.service %>% left_join(y = bentonzips, by = "zipcode")
+#WRITE TO ACP DASHBOARD FOLDER  
+write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "BentonCitiesData", x = acp.serviceBenton1, overwrite = TRUE)
 
 #this version of acp.claimed_Benton includes all claim zipcode data to be written to the ACP geodb in ArcGIS, projected, and then exported as a .shp.
-acp.claimed_Benton2 <- acp.claims %>% left_join(y = bentonzips, by = "zipcode")
+#acp.claimed_Benton2 <- acp.claims %>% left_join(y = bentonzips, by = "zipcode") %>% merge(y = acp.serviceBenton2)
 
 
-#WRITE TO ACP DASHBOARD FOLDER  
-write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "BentonCitiesData", x = acp.claimed_Benton1, overwrite = TRUE)
+#WRITE CLAIMED TO ACP DASHBOARD FOLDER  
+#write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "BentonCitiesData", x = acp.claimed_Benton1, overwrite = TRUE)
 
 
 #join with us zip-geography dataframe and write to the geodatabase to check in arcgis
 ACPzipBenton <- usZIP %>% left_join(y = acp.serviceBenton2, by = c("GEOID10" = "zipcode"))
-ACPzipBenton_claimed <- usZIP %>% full_join(y = acp.claimed_Benton2, by = c("GEOID10" = "zipcode"))
-arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipBenton28sep2022", data = ACPzipBenton, overwrite = TRUE)
+#ACPzipBenton_claimed <- usZIP %>% full_join(y = acp.claimed_Benton2, by = c("GEOID10" = "zipcode"))
+arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipBenton16Nov2022", data = ACPzipBenton, overwrite = TRUE)
 
 
-arcgisbinding::arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipBentonClaimed18Oct22", data = ACPzipBenton_claimed, overwrite=TRUE)
+# arcgisbinding::arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipBentonClaimed18Oct22", data = ACPzipBenton_claimed, overwrite=TRUE)
 
 #write to git folder
-arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ZipData.shp", data = ACPzipBenton_claimed, overwrite = TRUE)
+arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ZipData.shp", data = ACPzipBenton, overwrite = TRUE)
 #arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ZipBounds", data = usZIP)
 
 
@@ -364,15 +379,15 @@ HHincome_state.2 <- HHincome_state.1  %>% select(-moe) %>% left_join(y = inc.max
 HHincome_state.3 <- HHincome_state.2 %>% left_join(y = totalHH_state, by = "geoid") %>%
   left_join(y = ACPstates, by = c("geoid" = "state_code")) %>%
   mutate(HHqualify_perc = (hh_qualify/total_hh)*100, 
-  HHEoE_perc = (HH_oct17/hh_qualify)*100) %>% ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
+  HHEoE_perc = (HH_nov14/hh_qualify)*100) %>% ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
   rename("totalHH"="total_hh", "HHqualify"="hh_qualify") %>%
   select(-name, -state) %>%
-  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_oct17, HHEoE_perc) %>% 
+  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_nov14, HHEoE_perc) %>% 
   subset(geoid != "69" & geoid != "66" & geoid != "60" & geoid != "72" & geoid != "78") %>%
   rename("state" = "State") %>%
-  ungroup() %>%
-  left_join(y = claims_state, by = c("geoid" = "state_fips")) %>%
-  mutate(HHCoE_perc = (claimed/HHqualify)*100) 
+  ungroup() #%>%
+  #left_join(y = claims_state, by = c("geoid" = "state_fips")) %>%
+  #mutate(HHCoE_perc = (claimed/HHqualify)*100) 
 
 
 #also write to google drive workbook for ACP dashboard
@@ -417,11 +432,15 @@ US_eligibleHH40 <- US_eligibleHH*.40
 US_eligibleHH45 <- US_eligibleHH*.45
 #50% of HHs that qualify for ACP and enroll
 US_eligibleHH50 <- US_eligibleHH*.5
+#55% of HHs that qualify for ACP and enroll
+US_eligibleHH55 <- US_eligibleHH*.55
+#60% of HHs that qualify for ACP and enroll
+US_eligibleHH60 <- US_eligibleHH*.60
 #75% of HHs that qualify for ACP and enroll
 US_eligibleHH75 <- US_eligibleHH*.75
 
 #create index which represents months - currently predicting Oct 2022 and beyond
-acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 10:232) %>% rename(enrolled = fit)
+acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 12:232) %>% rename(enrolled = fit)
 
 #create ACP-only vector (selects only months after switch from EBB to ACP)
 ACP.only <- acp_national %>% subset(monthBYyear >= 9) %>% select(month, allHH) %>% rename(enrolled = allHH)
@@ -436,7 +455,7 @@ enroll.currentb <- enroll.current %>% bind_rows(enroll.current[rep(nrow(enroll.c
               mutate(month = month + seq(36))) %>% #creates a month sequence, to project out to 36 months
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent), #estimates monthly spent (based only on enrollment & cumulative spent)
                      perc.enrolled = (enrolled/US_eligibleHH)*100 , perc.used = (cum.spent/ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 46)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 47)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25/ebb.acp)*100, #adds in an extra 2.5% that Ry suggested to incorporate higher tribal value and device spending
          model = paste0(x, " Percent Enrollment" ," (",y," Million Households)"))
@@ -461,7 +480,7 @@ enroll40b <- enroll40 %>% bind_rows(enroll40[rep(nrow(enroll40), 36),] %>%
                      cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100,
                      perc.used = (cum.spent/ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 47)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 48)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "40 Percent Enrollment (14.7 Million Households)")
 enroll40b$month <- format(enroll40b$month, format = "%b-%y")
@@ -483,12 +502,29 @@ enroll40b$month <- format(enroll40b$month, format = "%b-%y")
            #sheetName = "enroll40",colNames = TRUE, append = TRUE, x = enroll40b)
 
 #calculates amount of fund used until %45 enrollment is observed
+
+
+###STEP A
+add.in45 <- data.frame("enrolled" = US_eligibleHH45,"lwr" = NA, "upr" = NA, "month" = (max(ACP.only$month) + 1)) 
+enroll45 <- ACP.only %>%  bind_rows(add.in45) %>% arrange(month) %>% as.data.frame()
+enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 36),] %>%
+              mutate(month = month + seq(36))) %>% 
+              mutate(lwr = NA, upr = NA,
+                     month.spent = enrolled*30, 
+                     cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/US_eligibleHH)*100,
+                     perc.used = (cum.spent/ebb.acp)*100,
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 48)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+  mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "45 Percent Enrollment (14.7 Million Households)")
+enroll45b$month <- format(enroll45b$month, format = "%b-%y")
+
 enroll45 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH45) %>% bind_rows(ACP.only) %>% arrange(month) 
 enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 48)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 47)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "45 Percent Enrollment (16.5 Million Households)") 
 enroll45b$month <- format(enroll45b$month, format = "%b-%y")
@@ -510,6 +546,34 @@ enroll50b$month <- format(enroll50b$month, format = "%b-%y")
 #write.xlsx("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/ACPmodel.xlsx",
            #sheetName = "enroll50",colNames = TRUE, append = TRUE, x = enroll50b)
 
+#calculates amount of fund used until %55 enrollment is observed
+enroll55 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH55) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll55b <- enroll55 %>% bind_rows(enroll55[rep(nrow(enroll55), 36),] %>%
+              mutate(month = month + seq(36))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 52)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+  mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "55 Percent Enrollment (20.2 Million Households)") 
+enroll55b$month <- format(enroll55b$month, format = "%b-%y")
+
+#write.xlsx("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/ACPmodel.xlsx",
+           #sheetName = "enroll55",colNames = TRUE, append = TRUE, x = enroll55b)
+
+#calculates amount of fund used until %60 enrollment is observed
+enroll60 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH60) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll60b <- enroll60 %>% bind_rows(enroll60[rep(nrow(enroll60), 36),] %>%
+              mutate(month = month + seq(36))) %>%
+              mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
+                     perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 55)) %>%
+  select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
+  mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "60 Percent Enrollment (22 Million Households)") 
+enroll60b$month <- format(enroll60b$month, format = "%b-%y")
+
+#write.xlsx("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/ACPmodel.xlsx",
+           #sheetName = "enroll60",colNames = TRUE, append = TRUE, x = enroll60b)
+
 #calculates amount of fund used until %75 enrollment is observed #NOT REACHED, SO USING AS CONTINUOUS GROWTH##
 enroll75 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH75) %>% bind_rows(ACP.only) %>% arrange(month) 
 enroll75b <- enroll75 %>% bind_rows(enroll75[rep(nrow(enroll75), 36),] %>%
@@ -528,9 +592,11 @@ enroll75b$month <- format(enroll75b$month, format = "%b-%y")
 
 modeldata <- bind_rows(enroll.currentb,
                        #enroll30b,
-                       enroll40b,
+                       #enroll40b,
                        enroll45b,
                        enroll50b,
+                       enroll55b,
+                       enroll60b,
                        enroll75b) %>%
   mutate(m.seq = ave(perc.used25, model, FUN = seq_along))
 
@@ -544,12 +610,12 @@ modeldataCI <- modeldata %>% mutate(upperCI = (p + CI), lowerCI = (p - CI)) %>% 
 
 plot <- ggplot(modeldata, aes(x = m.seq, y = p, group=model)) +
    #xlim("Jan-21","Feb-26") +
-   ylim(0,1.5) +
+   #ylim(0,1.5) +
   geom_line(aes(colour=model)) + theme_classic() +geom_hline(yintercept = 1) 
 
 acpTESTplot <- plotly::ggplotly(plot) #converts plot to interactive version
 
-xlsx::write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "ModelData1", x = modeldata, append = TRUE)
+xlsx::write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "ModelData", x = modeldata, append = TRUE)
 
 write.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ModelData.csv", x = modeldata)
 ```
