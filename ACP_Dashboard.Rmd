@@ -444,7 +444,7 @@ US_eligibleHH60 <- US_eligibleHH*.60
 US_eligibleHH75 <- US_eligibleHH*.75
 
 #create index which represents months - currently predicting Feb 2023 and beyond
-acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(month = 22:241) %>% rename(enrolled = fit)
+acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(monthBYyear = 22:241) %>% rename(enrolled = fit)
 
 #create ACP-only vector (selects only months after switch from EBB to ACP)
 ACP.only <- acp_national %>% subset(monthBYyear >= 9) %>% select(monthBYyear,month, allHH) %>% rename(enrolled = allHH)
@@ -476,7 +476,7 @@ enroll.currentb$month  <- format(enroll.currentb$month, format = "%b-%y") #paste
 summary(acp_ToPlot1$enrolled < US_eligibleHH40) #test to determine if any predicted values fall under enrollment cap. If TRUE, then go to step B, if FALSE go to step A.
 ###STEP A
 add.in40 <- data.frame("enrolled" = US_eligibleHH40,"lwr" = NA, "upr" = NA, "month" = (max(ACP.only$month) + 1)) 
-enroll40 <- ACP.only %>%  bind_rows(add.in40) %>% arrange(month) %>% as.data.frame()
+enroll40 <- ACP.only %>%  bind_rows(add.in40) %>%  as.data.frame() %>% arrange(monthBYyear)
 enroll40b <- enroll40 %>% bind_rows(enroll40[rep(nrow(enroll40), 36),] %>%
               mutate(month = month + seq(36))) %>% 
               mutate(lwr = NA, upr = NA,
@@ -484,7 +484,7 @@ enroll40b <- enroll40 %>% bind_rows(enroll40[rep(nrow(enroll40), 36),] %>%
                      cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100,
                      perc.used = (cum.spent/ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 49)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 50)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "40 Percent Enrollment (14.7 Million Households)")
 enroll40b$month <- format(enroll40b$month, format = "%b-%y")
@@ -510,7 +510,7 @@ enroll40b$month <- format(enroll40b$month, format = "%b-%y")
 
 ###STEP A
 add.in45 <- data.frame("enrolled" = US_eligibleHH45,"lwr" = NA, "upr" = NA, "month" = (max(ACP.only$month) + 1)) 
-enroll45 <- ACP.only %>%  bind_rows(add.in45) %>% arrange(month) %>% as.data.frame()
+enroll45 <- ACP.only %>%  bind_rows(add.in40) %>%  as.data.frame() %>% arrange(monthBYyear)
 enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 36),] %>%
               mutate(month = month + seq(36))) %>% 
               mutate(lwr = NA, upr = NA,
@@ -520,7 +520,7 @@ enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 36),] %>%
                      perc.used = (cum.spent/ebb.acp)*100,
                      month = seq(as.Date("2022-01-01"), by = "month",length.out = 50)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
-  mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "45 Percent Enrollment (14.7 Million Households)")
+  mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "45 Percent Enrollment (16.5 Million Households)")
 enroll45b$month <- format(enroll45b$month, format = "%b-%y")
 
 enroll45 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH45) %>% bind_rows(ACP.only) %>% arrange(month) 
@@ -537,7 +537,7 @@ enroll45b$month <- format(enroll45b$month, format = "%b-%y")
            #sheetName = "enroll45",colNames = TRUE, append = TRUE, x = enroll45b)
 
 #calculates amount of fund used until %50 enrollment is observed
-enroll50 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH50) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll50 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH50) %>% bind_rows(ACP.only) %>% arrange(monthBYyear) 
 enroll50b <- enroll50 %>% bind_rows(enroll50[rep(nrow(enroll50), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
@@ -551,7 +551,7 @@ enroll50b$month <- format(enroll50b$month, format = "%b-%y")
            #sheetName = "enroll50",colNames = TRUE, append = TRUE, x = enroll50b)
 
 #calculates amount of fund used until %55 enrollment is observed
-enroll55 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH55) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll55 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH55) %>% bind_rows(ACP.only) %>% arrange(monthBYyear) 
 enroll55b <- enroll55 %>% bind_rows(enroll55[rep(nrow(enroll55), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
@@ -565,7 +565,7 @@ enroll55b$month <- format(enroll55b$month, format = "%b-%y")
            #sheetName = "enroll55",colNames = TRUE, append = TRUE, x = enroll55b)
 
 #calculates amount of fund used until %60 enrollment is observed
-enroll60 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH60) %>% bind_rows(ACP.only) %>% arrange(month) 
+enroll60 <- acp_ToPlot1 %>% subset(enrolled < US_eligibleHH60) %>% bind_rows(ACP.only) %>% arrange(monthBYyear) 
 enroll60b <- enroll60 %>% bind_rows(enroll60[rep(nrow(enroll60), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
@@ -579,7 +579,7 @@ enroll60b$month <- format(enroll60b$month, format = "%b-%y")
            #sheetName = "enroll60",colNames = TRUE, append = TRUE, x = enroll60b)
 
 #calculates amount of fund used under continuous enrollment is observed 
-enroll75 <- acp_ToPlot1 %>%  bind_rows(ACP.only) %>% arrange(month) 
+enroll75 <- acp_ToPlot1 %>%  bind_rows(ACP.only) %>% arrange(monthBYyear) 
 enroll75b <- enroll75 %>% bind_rows(enroll75[rep(nrow(enroll75), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
@@ -619,7 +619,7 @@ plot <- ggplot(modeldata, aes(x = m.seq, y = p, group=model)) +
 
 acpTESTplot <- plotly::ggplotly(plot) #converts plot to interactive version
 
-xlsx::write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "ModelData", x = modeldata, append = TRUE)
+xlsx::write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "ModelDataB", x = modeldata, append = TRUE)
 
 write.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ModelData.csv", x = modeldata)
 ```
