@@ -2,7 +2,7 @@
  Details and methdology supporting the ACP Dashboard  
  https://apps.communitynets.org/acpdashboard/
  
- 
+ To cite the dashboard: Parker, C., Gautier, E., and Marcattilio-McCracken, R. 2022. ACP Dashboard. Institute for Local Self Reliance. https://www.acpdashboard.com
 
 # ACP_Dashboard.Rmd
 This script is set up to summarize & estimate enrollment in ACP, estimate ACP expenditures, and estimate when the fund is likely to run out. It includes code to model various scenarios of enrollment (36 - unlimited) based on the number of households (HH) that qualify for ACP (annual HH income within 200% of the poverty line (FPL)), and when the funds would be depleted according to those scenarios.
