@@ -3,7 +3,7 @@
 Details and methdology supporting the ACP Dashboard\
 <https://apps.communitynets.org/acpdashboard/>
 
-**To cite the dashboard:** Parker, C., Gautier, E., and Marcattilio-McCracken, R. 2022. ACP Dashboard. Institute for Local Self Reliance. <https://www.acpdashboard.com>
+**To cite the dashboard:** Parker, C., Gautier, E., and Marcattilio, R. 2022. ACP Dashboard. Institute for Local Self Reliance. <https://www.acpdashboard.com>
 
 # ACP_Dashboard.Rmd
 
