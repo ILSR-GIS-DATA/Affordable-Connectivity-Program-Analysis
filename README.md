@@ -5,6 +5,7 @@ Details and methodology supporting the [ACP Dashboard](acpdashboard.com)
 **To cite the dashboard:** Parker, C., Gautier, E., and Marcattilio, R. 2022. ACP Dashboard. Institute for Local Self Reliance. <https://www.acpdashboard.com>
 
 Why we built it, and more explanations
+
 https://communitynets.org/content/fate-affordable-connectivity-program
 
 https://communitynets.org/content/new-resource-tracking-affordable-connectivity-program
