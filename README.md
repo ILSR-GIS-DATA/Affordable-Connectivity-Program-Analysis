@@ -1,36 +1,57 @@
 # Affordable Connectivity Program (ACP) Analysis
 
-Details and methdology supporting the ACP Dashboard\
-<https://apps.communitynets.org/acpdashboard/>
+Details and methodology supporting the [ACP Dashboard](acpdashboard.com)
 
 **To cite the dashboard:** Parker, C., Gautier, E., and Marcattilio, R. 2022. ACP Dashboard. Institute for Local Self Reliance. <https://www.acpdashboard.com>
 
 # ACP_Dashboard.Rmd
 
-This script is set up to summarize & estimate enrollment in ACP, estimate ACP expenditures, and estimate when the fund is likely to run out. It includes code to model various scenarios of enrollment (36 - unlimited) based on the number of households (HH) that qualify for ACP (annual HH income within 200% of the poverty line (FPL)), and when the funds would be depleted according to those scenarios.
+This script is set up to summarize & estimate enrollment in ACP, estimate ACP expenditures, and estimate when the fund is likely to run out. It includes code to model various scenarios of enrollment (current - 100%) based on the number of households (HH) that qualify for ACP (annual HH income within 200% of the poverty line (FPL) or enrollment in federal assistance programs (e.g., SNAP, Medicare/Medicaid, free school lunch program), and when the funds would be depleted according to those scenarios.
 
 ## Percent of Eligible Households Enrolled
 
 **Datasets:**\
-Household income - Table B19001 of the American Community Survey(ACS) 5 Year (2015 - 2019)\
-Average HH size - Variable B25010_001 of ACS 5yr 2015-2019
+Household income - Table B19001 of the American Community Survey(ACS) 5 Year (2017 - 2021)\
+Household/individual microdata - ACS PUMS 5 Year (2017 - 2021)\
+Average HH size - Variable B25010_001 of ACS 5yr 2017 - 2021
 
-**Method:**\
-Our estimate of eligible HHs was calculated using the average HH size for the geography of interest (state or zcta). We used the federal poverty line guidelines from 2019 to determine zipcode/state specific annual income levels (based on the respective average HH size) that fall within 200% of the FPL. Different FPL's exist for Alaska, Hawaii, and the remaining 48 states, so we created an equation for each FPL (see below) which represent a modification of the equation developed by Rural LISC. For any zcta's that did not have an average HH size, we used the national average which was 2.62 in 2019. All income brackets that fell within the 200% FPL were included in our calculation of total households eligible for ACP.
+**Method (Income only):**\
+Our estimate of eligible HHs was calculated using the average HH size for the geography of interest (state or zcta). We used the federal poverty line guidelines from 2021 to determine zipcode/state specific annual income levels (based on the respective average HH size) that fall within 200% of the FPL. Different FPL's exist for Alaska, Hawaii, and the remaining 48 states, so we created an equation for each FPL (see below) which represent a modification of the equation developed by Rural LISC. For any zcta's that did not have an average HH size, we used the national average which was 2.60 in 2021. All income brackets that fell within the 200% FPL were included in our calculation of total households eligible for ACP.
 
 x = average household size for a given state/zcta\
 Alaska FPL = 31200 + 11060*(x - 1)\
-Hawaii FPL = 28760 + 10160*(x - 1)\
+*Hawaii FPL = 28760 + 10160(x - 1)\
 lower48 = 24980 + 8840\*(x - 1)
 
+**Method (Income + Program):**\
+We estimated eligible HHs at the state level using ACS micro-data, specifically using the variables listed below. We first evaluated individual-level eligibility where an individual was eligible if: HINS4 == 1 OR POVPIP == between(0,200) OR PAP \> 0 OR SSIP \> 0. We retained all individuals that were eligible and joined those data with the full household-level data-set. Finally, we evaluated the household-level factor and determined households could be eligible if: FS == 1. We grouped this data-set by a household id number (SERIALNO) and state (ST), and calculated the sum of PWGTP (HH weight) to determine the estimated number of households that are eligible by income (POVPIP) & program (FS, HINS4, PAP, SSIP).
+
+Variables*: RT,ST, SERIALNO, SPORDER, PWGTP, PAP, HINS4, SSIP, POVPIP*\
+
+Since micro-data are not available at the zip code level, we used an adjustment factor defined by [Galperin 2022](https://arnicusc.org/wp-content/uploads/2022/10/Policy-Brief-2-ACP-eligibility-final.pdf) to generate more accurate estimates of eligibility at the zip code level. We determined an adjustment factor for each state by calulcating the ratio of the income-only enrollment rate to the income+program enrollment rate. We then applied this ratio to our income-only eligibility estimates at the zip code level. This method does assume that the rate of under counted households is constant across the state.
+
+To estimate household eligibility and enrollment within congressional districts, we used the [congressional district to ZCTA relationship file](https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11820_zcta520_natl.txt) to associate zip code data with congressional districts. We grouped the data by congressional district to calculate district level estimates of eligibility and enrollment rates.
+
+**Important note:** The estimates provided within the congressional district map should be used with the knowledge that some zip codes were double counted between districts. Zip codes can overlap congressional district boundaries and because there are currently no more granular data available, we allowed this double counting to occur. Summaries across districts should not be attempted because they would exaggerate any overestimates. Please refer to the state or zip code level data-sets to generate other summaries. We do intend to refine these estimates in time.
+
 **PREDICTIONS - When Will ACP Funds Be Depleted?**\
-The nationwide enrollment data for the Emergency Broadband Benefit and the Affordable Connectivity Program (combined) were used as the response variable in a linear regression model. A numeric index value representing the month-year (i.e., 1 - 12) of the fund since its start was used as the predictor variable. The resulting beta estimate from this model was used to generate several enrollment predictions in which we limit enrollment to some percentage of the eligible HHs. We modeled the current percent enrolled of eligible HHs, 40%, 45%, 50%, and continuous enrollment. For each prediction, we also calculated the proportion of the fund (\$15.5B [remaining EBB + ACP]) spent, up to 36 months to estimate when the fund would be depleted if we reach and maintain (but do not exceed) that level of enrollment.
+The nationwide enrollment data for the Emergency Broadband Benefit and the Affordable Connectivity Program (combined) were used as the response variable in a linear regression model. A numeric index value representing the month-year (i.e., 1 - 12) of the fund since its start was used as the predictor variable. The resulting beta estimate from this model was used to generate several enrollment predictions in which we limit enrollment to some percentage of the eligible HHs. We modeled the current enrollment rate, 40%, and continuous enrollment growth. For each prediction, we also calculated the proportion of the fund (\$15.5B [remaining EBB + ACP]) spent, up to 36 months to estimate when the fund would be depleted if we reach and maintain (but do not exceed) that level of enrollment.
 
-**Important note:** While 200% FPL is a generous guideline to include HHs beyond those that already qualify for other income- and disability- based programs. However, it is important to keep in mind that additional households may not fall within the 200% FPL, but may still qualify for other government programs that automatically qualify them for ACP. These HHs are not yet included in our estimates and therefore our estimates of HH eligibility are likely lower than the true population of eligible HHs. This is something we plan to incorporate in future versions of this dashboard.
+**Data Sources:**
 
-**Data Sources:** 1. Universal Service Administrative Co. ACP Enrollment and Claims Tracker (<https://www.usac.org/about/affordable-connectivity-program/acp-enrollment-and-claims-tracker/#enrollment-by-state>) 2. Emergency Broadband Benefit Program Enrollments and Claims Tracker (<https://www.usac.org/about/emergency-broadband-benefit-program/emergency-broadband-benefit-program-enrollments-and-claims-tracker/>) 3. American Community Survey (5-year 2016 - 2020; Table B19001) 4. Dept. of Health and Human Services Poverty Guidelines for 2019 \#<https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines/prior-hhs-poverty-guidelines-federal-register-references/2019-poverty-guidelines>
+1.  Universal Service Administrative Co. ACP Enrollment and Claims Tracker (<https://www.usac.org/about/affordable-connectivity-program/acp-enrollment-and-claims-tracker/#enrollment-by-state>)
+
+2.  Emergency Broadband Benefit Program Enrollments and Claims Tracker (<https://www.usac.org/about/emergency-broadband-benefit-program/emergency-broadband-benefit-program-enrollments-and-claims-tracker/>)
+
+3.  American Community Survey (5-year 2017 - 2021; Table B19001)
+
+4.  Dept. of Health and Human Services Poverty Guidelines for 2021 <https://aspe.hhs.gov/sites/default/files/private/aspe-files/107166/2021-percentage-poverty-tool_0.pdf>
+
+5.  American Community Survey Microdata (5-year 2017 - 2021)
 
 ## Versioning
+
+**v2:** Update March 2023: Previous versions of the ACP Dashboard included estimates of household eligibility that were based on income alone. In this version, we have adjusted our estimates to include eligibility based on enrollment in a government assistance program such as SNAP or Medicare/Medicaid. Another change we made in this version was the addition of a congressional district map that includes enrollment estimates and expenditures (as of Dec 2022). Estimates for the congressional district should be used with the understanding that zip codes can overlap district boundaries, and as a result those zip codes are currently counted in both districts. Thus, summarizing across districts in the same state will produce incorrect results.
 
 **v1.3:** Update November 2022: A previous version of the ACP Dashboard was based on an incorrect understanding of the Enrolled and Claimed household numbers. At the time, we believed that these two values (as reflected in the publicly available USAC releases) represented an important (and increasingly so) reality where a large number of the households that were eligible and enrolling in the benefit were not using (or claiming) the benefit. Thus, the data seemed to show that millions of households who had been cleared to use the program were not getting the benefit each month. In the story below, we highlight what looked like gaps in major metropolitan areas, including places like Baltimore, Detroit, Washington D.C., and elsewhere. After further conversation with administration representatives regarding the ACP data releases, it seems this is not the case. Instead, the difference between Enrolled and Claimed households only reflects the procedure via which ISPs participating in the program are submitting payment claims to USAC at irregular intervals. ISPs have six months to submit data to USAC for reimbursement - here, according to administration officials, is where this gap originates from. Rather than reflecting enrolled households not using the benefit, instead it reveals where ISPs are waiting (or have failed) to claim households that are in fact participating. Why this seems to be taking place at larger rates in some metro areas as opposed to others, we do not yet know. If you have additional insight, please reach out to use at [broadband\@muninetworks.org](mailto:broadband@muninetworks.org){.email}. Once we know more, we will update this story. To reiterate: according to administration sources, all Enrolled households should be using the benefit, and reflect the best numbers for understanding how much of the fund is being used at present. We have adjusted the dashboard to reflect this, but preserve the original story below.
 

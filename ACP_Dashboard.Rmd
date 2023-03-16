@@ -2,7 +2,6 @@
 title: "ACP Enrollment Dashboard"
 author: "Christine Parker | ILSR"
 date: "7 March 2023"
-
 ---
 
 ```{r setup, include = FALSE, echo=FALSE}
@@ -264,7 +263,6 @@ future <- data.frame(monthBYyear = c(23:240))
  #states<-   
 ```
 
-
 ```{r ACP State Analysis,cache = TRUE,cache.lazy = FALSE, echo=FALSE, results='hide'}
 #import the list of zcta's for AK and HI
 ak.zcta <- zctas(cb = FALSE, year = 2010, state = 02) #load AK zcta's
@@ -340,7 +338,6 @@ st_adj_factor <- st %>% left_join(y = HHincome_state.3, by = c("STATEFP" = "geoi
 #arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/state_AdjFactor", 
 #data = st_adj_factor)
 ```
-
 
 ```{r ACP ZCTA Analysis, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
 
@@ -427,7 +424,7 @@ acp.service <- acp_zcta %>% select(zipcode, enrollments) %>%
   mutate(HHEoE_perc = ifelse(HHEoE_perc >= 100, 101,
                               ifelse(HHEoE_perc == Inf, 101,HHEoE_perc))) #if % is greater than 100 or Inf, then set as 101 %
 
-#load congressional district -> zcta file
+#load congressional district -> zcta file (https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11820_zcta520_natl.txt)
 cdTOzcta <- read.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/PUMS_5yr_2021/cdTOzcta.txt") %>% clean_names() %>%
   mutate(geoid_zcta5_20 = as.character(geoid_zcta5_20))
 
@@ -527,9 +524,6 @@ US_HHEoE <- (US_enrolled$allHH/US_eligibleHH)*100
 
 
 ```
-
-
-
 
 ```{r enrollment model ,cache = TRUE,cache.lazy = FALSE, echo=FALSE}
 
