@@ -4,6 +4,11 @@ Details and methodology supporting the [ACP Dashboard](acpdashboard.com)
 
 **To cite the dashboard:** Parker, C., Gautier, E., and Marcattilio, R. 2022. ACP Dashboard. Institute for Local Self Reliance. <https://www.acpdashboard.com>
 
+Why we built it, and more explanations
+https://communitynets.org/content/fate-affordable-connectivity-program
+https://communitynets.org/content/new-resource-tracking-affordable-connectivity-program
+https://communitynets.org/content/our-affordable-connectivity-program-dashboard-back-and-better-ever
+
 # ACP_Dashboard.Rmd
 
 This script is set up to summarize & estimate enrollment in ACP, estimate ACP expenditures, and estimate when the fund is likely to run out. It includes code to model various scenarios of enrollment (current - 100%) based on the number of households (HH) that qualify for ACP (annual HH income within 200% of the poverty line (FPL) or enrollment in federal assistance programs (e.g., SNAP, Medicare/Medicaid, free school lunch program), and when the funds would be depleted according to those scenarios.
