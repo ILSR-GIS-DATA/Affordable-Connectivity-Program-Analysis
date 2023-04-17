@@ -6,11 +6,11 @@ Details and methodology supporting the [ACP Dashboard](acpdashboard.com)
 
 Why we built it, and more explanations
 
-https://communitynets.org/content/fate-affordable-connectivity-program
+<https://communitynets.org/content/fate-affordable-connectivity-program>
 
-https://communitynets.org/content/new-resource-tracking-affordable-connectivity-program
+<https://communitynets.org/content/new-resource-tracking-affordable-connectivity-program>
 
-https://communitynets.org/content/our-affordable-connectivity-program-dashboard-back-and-better-ever
+<https://communitynets.org/content/our-affordable-connectivity-program-dashboard-back-and-better-ever>
 
 # ACP_Dashboard.Rmd
 
