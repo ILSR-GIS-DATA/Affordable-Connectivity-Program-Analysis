@@ -1,7 +1,7 @@
 ---
 title: "ACP Enrollment Dashboard"
 author: "Christine Parker | ILSR"
-date: "25 Apr 2023"
+date: "`r Sys.Date()`"
 ---
 
 ```{r setup, include = FALSE, echo=FALSE}
@@ -88,130 +88,48 @@ sum(eligible.all$WGTP)
 
 #make sure all state codes have leading zero
 st_eligible$ST <-  str_pad(st_eligible$ST, width = 2, side = c("left"), pad = 0)
-# #-------------ipums analysis code
-# #load ipums data from website (2020 5-yr dataset)
-# ddi <- read_ipums_ddi("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/ACP/usa_00003.xml")
-# data <- read_ipums_micro(ddi)
-# 
-# 
-# 
-# data2 <- data %>% zap_ipums_attributes() %>%
-#  rename("HINS4" = "US2020C_HINS4", "FS" = "US2020C_FS", "PAP" = "US2020C_PAP",
-#         "SSIP" = "US2020C_SSIP", "POVPIP" = "US2020C_POVPIP") %>%
-#   mutate(FS = as.numeric(FS), POVPIP = as.numeric(POVPIP), PAP = as.numeric(PAP), SSIP = as.numeric(SSIP), HINS4 = as.numeric(HINS4),
-#          HH_ID = paste0(as.character(SAMPLE)))
-# 
-# hh_st <- data2 %>% group_by(STATEFIP, CBSERIAL) %>% subset(GQ == 1 | GQ == 2) %>% summarize(households = sum(HHWT)) #households per state
-# hh_st_acs <- tidycensus::get_acs(
-#   survey = "acs5",
-#   year = 2020,
-#   geography = "state",
-#   variables = c("households" = "B11012_001"),
-#   output = "wide"
-# )
-# 
-# #filter full dataset to find all person/household records that meet criteria & retain only distinct household serial numbers
-# data.P1 <- data2 %>% 
-#  mutate(pe = ifelse(is.na(POVPIP) == FALSE & between(POVPIP, 0, 200), 1, 0), HINS4 = replace_na(HINS4,-1), PAP = replace_na(PAP, -1), SSIP = replace_na(SSIP, -1), FS = replace_na(FS, -1)) 
-# 
-# 
-# p.filt <- data.P1 %>% mutate(pe = ifelse(HINS4 == 1 | PAP > 0 | SSIP > 0, 1, pe)) %>%
-#  group_by(CBSERIAL) %>% summarize(all.pe = sum(pe)) %>% subset(all.pe > 0)
-# 
-# h.data2 <- data.P1 %>% subset(GQ == 1 | GQ == 2) #create household only dataset
-# 
-# eligible.all <- full_join(x = h.data2, y = p.filt, by = "CBSERIAL") %>% 
-#   mutate(P = ifelse(FS == 1 | all.pe > 0, "y", "n")) %>%
-#   subset(P == "y") %>% mutate(US2020C_WGTP = as.numeric(US2020C_WGTP), US2020C_WGTP = ifelse(is.na(US2020C_WGTP) == TRUE, 0, US2020C_WGTP))
-# sum(as.numeric(eligible.all$US2020C_WGTP))
-# sum(na.omit(eligible.all$HHWT))
-# 
-#   
-# 
-# 
-# 
-# #---------------Alabama code example
-# vars5 <- View(pums_variables)
-# 
-# Hpums_vars <- c("RT","TYPEHUGQ", "FS")
-# Ppums_vars <- c("RT","HINS4", "PAP", "SSIP","POVPIP")
-# 
-# P_pums <- get_pums(variables = Ppums_vars, state = "AL", year = 2021,
-#                      survey = "acs1") %>% mutate(pe = 0)
-# 
-# P_pums_eligible <- P_pums %>% mutate(pe = ifelse(HINS4 == "1" | PAP > 0 | SSIP > 0 | between(POVPIP, 0, 200), 1, pe)) %>%
-#   group_by(SERIALNO) %>% summarize(all.pe = sum(pe)) %>% subset(all.pe > 0)
-# 
-# H_pums <- get_pums(variables = Hpums_vars, state = "AL", year = 2021,
-#                      survey = "acs1") %>% subset(TYPEHUGQ == "1" | "TYPEHUGQ" == "2")
-# 
-# 
-# eligible.all <- full_join(x = H_pums, y = P_pums_eligible, by = "SERIALNO") %>% mutate(P = ifelse(FS == "1" , "y", "n")) %>%
-#   subset(P == "y") %>% mutate(WGTP = ifelse(is.na(WGTP) == TRUE, 0, WGTP))
-# 
-# sum(eligible.all$WGTP)
-
-
-
-# 
-# 
-# 
-# 
-# 
-# #---------------US pums code for eligibility
-# #load dataset that was manually downloaded from ipums (get_pums times out for whole country)
-# lifeline_factors_2020 <- fread("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/ACS/usa_00002.csv")
-# 
-# lifeline_factors_2020 <- lifeline_factors_2020 %>% rename("HINS4" = "US2020C_HINS4", "FS" = "US2020C_FS", "PAP" = "US2020C_PAP",
-#                                                           "SSIP" = "US2020C_SSIP", "POVPIP" = "US2020C_POVPIP")
-# 
-# #subset lifeline data to find ACP eligible records
-# acp.pums <- all_pums %>% 
-#   mutate(POVPIP = ifelse(POVPIP == "BBB", "-1", POVPIP), #recodes these BBB so this can be numerically filtered and will not be included in our summaries
-#          PAP = ifelse(PAP == "BBBBB", "-1", PAP),
-#          SSIP = ifelse(SSIP == "BBBBB", "-1", SSIP)) %>%
-#   mutate(FS = as.numeric(FS), POVPIP = as.numeric(POVPIP), PAP = as.numeric(PAP), SSIP = as.numeric(SSIP), HINS4 = as.numeric(HINS4)) %>%
-#   subset(HINS4 == 1 | FS == 1 | na.omit(PAP == 1:30000) | na.omit(SSIP == 1:30000) | na.omit(POVPIP == 0:200)) %>%
-#   select(STATEFIP,PERNUM, US2020C_WGTP, HHWT) %>%
-#   subset(PERNUM == 1) %>% 
-#   group_by(STATEFIP) %>%
-#   summarize(hh_eligible = sum(US2020C_WGTP), hh2 = sum(HHWT))
-# 
-# #summarize HH by state
-# acp.pums.state <- acp.pums %>% subset(PERNUM == 1) %>% select() %>% group_by(STATEFIP) %>% summarize(pwt = sum(US2020C_PWGTP), hhwt = sum(US2020C_WGTP)) %>%
-#   group_by(STATEFIP) %>% summarize(person = sum(pwt), hh = sum(hhwt)) 
-#   
 
 ```
 
 ```{r Load & Edit Enrollment Data, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
 #load ACP enrollment data from spreadsheet (manually updated each week)
 #edit the variable name to reflect the most recent data update
-ACP24apr <- "C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACPWeeklyEnroll.xlsx"
+ACP8may <- "C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACPWeeklyEnroll.xlsx"
 
 data(fips_codes) #creates dataframe of all state and county fips codes
 fips_states <- fips_codes %>% select(state_name,state,state_code) 
 fips_states <- distinct(fips_states, .keep_all = TRUE) #condense down to single row per state
 
+#download zip to zcta crosswalk from UDSMapper here: https://udsmapper.org/zip-code-to-zcta-crosswalk/
+zip2zcta <- zip2zcta <- read_excel("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/CrosswalkData/ZIPCodetoZCTACrosswalk2021UDS.xlsx") %>% select(ZIP_CODE, STATE,ZCTA) %>%
+  rename("zipcode" = "ZIP_CODE", "state" = "STATE", "zcta" = "ZCTA")
+
 ##loads enrollment by zipcode data (this dataset does not include subscription vs. device & claims details)
-acp_zcta <- read_excel("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP-Enrollments-by-Zip-Code-as-of-March-1-2023.xlsx", sheet = 1, col_names = TRUE) %>% clean_names() %>% rename("enrollments" = "subscribers_in_zip") %>% select(zipcode, enrollments)
+acp_zip <- read_excel("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP-Enrollments-by-Zip-as-of-April-1-2023.xlsx", sheet = 1, col_names = TRUE) %>% clean_names() %>% rename("enrollments" = "subscribers_in_zip") %>% select(zipcode, enrollments) %>% 
+  right_join(y = zip2zcta, by = "zipcode")
 
 #load total spent by zipcode (to join with congressional data)
-acp_zcta_spent <- read_excel("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP-Claims-by-Zip-January2022-Feb2023.xlsx", 
-    col_types = c("skip", "text", "skip", 
-        "skip", "skip", "skip", "numeric")) %>% clean_names() 
+claims2022 <- read_excel("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP-Claims-by-Zip-January-December-2022.xlsx")
+claims2023 <- read_excel("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP-Claims-by-Zip-January-March-2023.xlsx") 
+
+claims22_23 <- bind_rows(claims2022,claims2023)
+
+acp_zip_spent <- claims22_23 %>% clean_names() %>% select(zipcode, total_support) %>%
+  mutate(zipcode = str_pad(zipcode, width = 5, side = c("left"), pad = 0)) %>%
+  group_by(zipcode) %>% 
+  summarize(total_support = sum(total_support))
+
+#write this to the dashboard folder each time to use for other claims-related elements
+write.csv(acp_zip_spent,"C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_claims22_23.csv")
 
 #make sure all zipcodes have leading zeros & convert to character
-acp_zcta$zipcode <-  str_pad(acp_zcta$zipcode, width = 5, side = c("left"), pad = 0)
-acp_zcta$zipcode <- as.character(acp_zcta$zipcode)
+acp_zip$zipcode <-  str_pad(acp_zip$zipcode, width = 5, side = c("left"), pad = 0)
+acp_zip$zipcode <- as.character(acp_zip$zipcode)
 
-#make sure all zipcodes have leading zeros & convert to character
-acp_zcta_spent$zipcode <-  str_pad(acp_zcta_spent$zipcode, width = 5, side = c("left"), pad = 0)
-acp_zcta_spent$zipcode <- as.character(acp_zcta_spent$zipcode)
 
 ##UPDATE THIS EVERY TIME
-ACPstates <-read_excel(path = ACP24apr, sheet = 4, col_names = TRUE) %>%
-  select(State,HH_24apr23) %>% 
+ACPstates <-read_excel(path = ACP8may, sheet = 4, col_names = TRUE) %>%
+  select(State,HH_8may23) %>% 
   left_join(y = fips_states, by = c("State" = "state_name"))
 
 #-------------------------------------------------------
@@ -233,7 +151,7 @@ usZIP <- zctas(cb = TRUE, year = 2020)
 
 #-------------------------------------------------------
 #NATIONAL DATA
-acp_national <-read_excel(path = ACP24apr, sheet = 2, col_names = TRUE) %>% clean_names() %>%
+acp_national <-read_excel(path = ACP8may, sheet = 2, col_names = TRUE) %>% clean_names() %>%
   #summarize data by year and month - total households, broken down into tribal and non-tribal
   group_by(month(date), year(date)) %>% summarize(allHH = max(total_households), ntHH = max(non_tribal), tHH = max(tribal)) %>% 
   #estimate how much of the fund has been used so far - using tribal and non-tribal HH enrollment
@@ -246,21 +164,10 @@ acp_national <-read_excel(path = ACP24apr, sheet = 2, col_names = TRUE) %>% clea
    
 #-------------------------------------------------------   
 #numerical list of months to use in prediction formula below (need to change this for each new month)
-future <- data.frame(monthBYyear = c(25:238))
+future <- data.frame(monthBYyear = c(26:238))
    
    
-#-------------------------------------------------------
-#get congressional districts
-   
-#cd <- congressional_districts(cb = FALSE, year = 2021)   
-   #arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/cd2021", data = cd, overwrite = TRUE)
 
-
-#-------------------------------------------------------   
-#load data from https://public.tableau.com/app/profile/francois.bar/viz/EstimatingACPParticipation/map2
-#adj.data <- read.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/ACP/acp_adjustment_data.csv", header = TRUE, sep = ",")
-
- #states<-   
 ```
 
 ```{r ACP State Analysis,cache = TRUE,cache.lazy = FALSE, echo=FALSE, results='hide'}
@@ -314,13 +221,13 @@ HHincome_state.3 <- HHincome_state.2 %>% left_join(y = totalHH_state, by = "geoi
   left_join(y = ACPstates, by = c("geoid" = "state_code")) %>% #join with state-weekly enrollment data
   left_join(y = st_eligible, by = c("geoid" = "ST")) %>% #join with PUMS-derived eligibility
   mutate(HHqualify_perc = (hh_qualify/total_hh)*100, 
-  HHEoE_perc = (HH_24apr23/hh_qualify)*100, ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
+  HHEoE_perc = (HH_8may23/hh_qualify)*100, ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
   HH_eligiblePUMS = (hh_eligible/total_hh)*100,
-  HHEoE_PUMSperc = (HH_24apr23/hh_eligible)*100,
+  HHEoE_PUMSperc = (HH_8may23/hh_eligible)*100,
   adj_factor = HHEoE_perc/HHEoE_PUMSperc) %>% 
   rename("totalHH"="total_hh", "HHqualify"="hh_qualify") %>%
   select(-name, -state) %>%
-  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_24apr23, HHEoE_perc,hh_eligible, HH_eligiblePUMS, HHEoE_PUMSperc, adj_factor) %>% 
+  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_8may23, HHEoE_perc,hh_eligible, HH_eligiblePUMS, HHEoE_PUMSperc, adj_factor) %>% 
   subset(geoid != "69" & geoid != "66" & geoid != "60" & geoid != "72" & geoid != "78") %>%
   rename("state" = "State", "hh_PUMSeligible" = "hh_eligible") %>%
   ungroup() 
@@ -328,15 +235,10 @@ HHincome_state.3 <- HHincome_state.2 %>% left_join(y = totalHH_state, by = "geoi
 st <- states(cb = TRUE, year = 2021)
 st_adj_factor <- st %>% left_join(y = HHincome_state.3, by = c("STATEFP" = "geoid"))
 
-
-#also write to google drive workbook for ACP dashboard
-#write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "EnrollByState", x = HHincome_state.3, overwrite = TRUE)
-
+#write this as individual file for github
 #write.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_EnrollByState.csv", x = HHincome_state.3)
 
 
-#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/state_AdjFactor", 
-#data = st_adj_factor)
 ```
 
 ```{r ACP ZCTA Analysis, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
@@ -374,7 +276,7 @@ HH.size_zcta <- get_acs(survey = "acs5", geography = "zcta", variables = "B25010
 
 #combine acs income data with the max values of the income ranges, and average household size
 HHincome_zcta.2 <- HHincome_zcta.1  %>% select(-moe) %>% left_join(y = inc.max.vals, by = c("variable" = "var")) %>% 
-  mutate(acp_data = if_else(geoid %in% acp_zcta$zipcode, "y","n"),
+  mutate(acp_data = if_else(geoid %in% acp_zip$zcta, "y","n"),
     region = if_else(geoid %in% ak.zcta$ZCTA5CE10, "AK",
                 if_else(geoid %in% hi.zcta$ZCTA5CE10, "HI", "L48"))) %>%
   left_join(y = HH.size_zcta, by = "geoid") %>%
@@ -398,97 +300,52 @@ HHincome_zcta.3 <- HHincome_zcta.2 %>% left_join(y = totalHH_zcta, by = "geoid")
 
 
 
-data(fips_codes) #creates dataframe of all state and county fips codes
-fips_states <- fips_codes %>% select(state,state_code) 
-fips_states <- distinct(fips_states) #condense down to single row per state
+#write acp enrollment by zcta to gdb
+acp.service <- acp_zip %>% select(zipcode,zcta,state, enrollments) %>%  
+  subset(zipcode != "00000") %>% #removes the row with redacted zipcodes
+  left_join(y = HHincome_zcta.3, by = c("zcta" = "geoid")) %>% 
+  mutate(HHEoE_perc = (enrollments/hh_qualify*100)) %>% #calculate the percent of enrolled of eligible HH's
+  rename("totalHH" = "total_hh") %>% 
+  mutate(HHEoE_perc = ifelse(HHEoE_perc >= 100, 101,
+                              ifelse(HHEoE_perc == Inf, 101,HHEoE_perc))) %>% #if % is greater than 100 or Inf, then set as 101 % 
+  left_join(y = acp_zip_spent, by = "zipcode") %>%
+  left_join(y = st_adj_factor[,c("STUSPS", "adj_factor")], by = c("state" = "STUSPS")) %>% 
+  mutate(eligible_adj = hh_qualify*adj_factor, #add in adjusted calculations of eligibility
+         eligible_adj_perc = (eligible_adj/totalHH)*100, 
+         HHEoE_adj = (enrollments/eligible_adj)*100) %>%
+  select(zipcode,zcta,state,totalHH, enrollments,eligible_adj, eligible_adj_perc, HHEoE_adj, total_support) %>% 
+  #subset(is.na(enrollments) == FALSE & is.na(HHEoE_adj) == FALSE) %>%
+  mutate(HHEoE_adj = ifelse(HHEoE_adj >= 100, 101,
+                              ifelse(HHEoE_adj == Inf, 101,HHEoE_adj)),
+         eligible_adj_perc = ifelse(eligible_adj_perc >= 100, 101, eligible_adj_perc),
+         enrollments = ifelse(is.na(enrollments) == TRUE, 0, enrollments))
 
-#associate Benton's list of cities with respective states
-bentonFIPS <- benton %>% left_join(y = fips_states, by = "state")
-#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/bentonFIPS2",data = bentonFIPS)
 
- ###START HERE TO UPDATE BENTON ZIP CODE DATA###
+
+# #associate Benton's list of cities with respective states
+# bentonFIPS <- benton %>% left_join(y = fips_states, by = "state")
+# #arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/bentonFIPS2",data = bentonFIPS)
+# 
+#  ###START HERE TO UPDATE BENTON ZIP CODE DATA###
 bentonzips <- arc.select(bentondata) %>%
   select(city, GEOID20) %>% rename("zipcode" = "GEOID20")
 
 
-#load in zipcode by state dataset from esri
-zipBYstate <- arc.open("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/USA_ZipCodeByState") %>%
-  arc.select() %>% clean_names() %>% select(zip_code, state)
-
-#write acp enrollment by zcta to gdb
-acp.service <- acp_zcta %>% select(zipcode, enrollments) %>%  
-  subset(zipcode != "00000") %>% #removes the row with redacted zipcodes
-  left_join(y = HHincome_zcta.3, by = c("zipcode" = "geoid")) %>% 
-  mutate(HHEoE_perc = (enrollments/hh_qualify*100)) %>% #calculate the percent of enrolled of eligible HH's
-  rename("totalHH" = "total_hh") %>% 
-  mutate(HHEoE_perc = ifelse(HHEoE_perc >= 100, 101,
-                              ifelse(HHEoE_perc == Inf, 101,HHEoE_perc))) #if % is greater than 100 or Inf, then set as 101 %
-
-#load congressional district -> zcta file (https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11820_zcta520_natl.txt)
-cdTOzcta <- read.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/PUMS_5yr_2021/cdTOzcta.txt") %>% clean_names() %>%
-  mutate(geoid_zcta5_20 = as.character(geoid_zcta5_20))
-
-#make sure all zipcodes have leading zeros & convert to character
-cdTOzcta$geoid_zcta5_20 <-  str_pad(cdTOzcta$geoid_zcta5_20, width = 5, side = c("left"), pad = 0)
-
-#create spending summary of zcta claims data
-acp_zcta_spent2 <- acp_zcta_spent %>% group_by(zipcode) %>% summarize(total_spent = sum(total_support)) %>% subset(zipcode != "00000")
-
-#join acp zcta data with congressional data - this allows you to link zcta's to state & incorporate enrollment adjustment factor
-ACPzip_CD <- acp.service %>% left_join(y = cdTOzcta, by = c("zipcode" = "geoid_zcta5_20"))  
-
-
-#use geoid in congressional district data to be able to link between zcta and state
-ACP_ZipStateCD <- ACPzip_CD %>% select(zipcode, enrollments:HHEoE_perc, geoid_cd118_20, namelsad_cd118_20) %>%
-  left_join(y = acp_zcta_spent2, by = "zipcode") %>%
-  rename("geoid_cd" = "geoid_cd118_20", "cd_name" = "namelsad_cd118_20") %>%
-  mutate(state_code = substr(geoid_cd, start = 1, stop = 2)) %>% #create state fips code from congressional district geoid
-  left_join(y = fips_states, by = "state_code") %>% #add in state namess
-  left_join(y = bentonzips, by = "zipcode") %>%#adds in Benton study city data
-  left_join(y = st_adj_factor %>% select(GEOID, adj_factor), by = c("state_code" = "GEOID")) %>%
-  mutate(eligible_adj = hh_qualify*adj_factor, eligible_adj_perc = (eligible_adj/totalHH)*100, HHEoE_adj = (enrollments/eligible_adj)*100) %>%
-  select(zipcode:adj_factor, eligible_adj:HHEoE_adj, total_spent) %>% subset(is.na(enrollments) == FALSE & is.na(HHEoE_adj) == FALSE) %>%
-  mutate(HHEoE_adj = ifelse(HHEoE_adj >= 100, 101,
-                              ifelse(HHEoE_adj == Inf, 101,HHEoE_adj))) %>% st_drop_geometry()
-
-ACP_ZipStateCD_geo <- usZIP %>% left_join(y = ACP_ZipStateCD, by = c("GEOID20" = "zipcode"))
-
-
-
-#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipStateCD24apr23", data = ACP_ZipStateCD)
-
-#st_write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_ZipStateCD24apr23.shp", obj = ACP_ZipStateCD_geo)
-
-#congressional district summary
-cd <- congressional_districts(cb = FALSE, year = 2020) 
-#arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/cong_dist2021.shp", data = cd)
-
-ACP_congdist <- ACP_ZipStateCD %>% st_drop_geometry() %>% group_by(geoid_cd, cd_name, state) %>%
-  summarize(enrollments = sum(na.omit(enrollments)), totalHH = sum(na.omit(totalHH)), 
-            hh_eligible = sum(na.omit(eligible_adj)), total_spent = sum(na.omit(total_spent))) %>%
-  mutate(HHEoE_perc = (enrollments/hh_eligible)*100) %>% ungroup() 
-
-ACP_congdist_geo <- cd %>% left_join(y = ACP_congdist, by = c("GEOID" = "geoid_cd"))
-
-#use this to export a spreadsheet of just congressional data
-#write.xlsx("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/BroadbandFunds/ACP_CD118.xlsx",
-           #sheetName = "congressional_districts",colNames = TRUE, append = TRUE, x = ACP_congdist)
-           
-#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_CD24apr23b", data = ACP_congdist) 
-#arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_CD_24apr23.shp", data = ACP_congdist_geo)
-
-#acp_na <- ACP_ZipStateCD %>% subset(is.na(eligible_adj) == TRUE)can look at the zips that are not linked to a district
-
 #creates dataset of only Benton cities for dashboard/github 
 #groups the data by city and then summarizes to great city-level enrollment estimates (not averages)
-ACP_Benton <- ACP_ZipStateCD %>% subset(is.na(city) == FALSE) %>% 
-  select(city, enrollments, totalHH, eligible_adj) %>% group_by(city) %>%
-  dplyr::summarize(enrollments = sum(na.omit(enrollments)), totalHH = sum(totalHH), hh_qualify_adj = sum(na.omit(eligible_adj)),
+ACP_Benton <- acp.service %>% right_join(y = bentonzips) %>% subset(is.na(city) == FALSE) %>% 
+  select(city, enrollments, totalHH, eligible_adj, total_support) %>% group_by(city) %>%
+  dplyr::summarize(enrollments = sum(na.omit(enrollments)), totalHH = sum(totalHH), hh_qualify_adj = sum(na.omit(eligible_adj)), total_support = sum(na.omit(total_support)),
             HHEoE_adj = (enrollments/hh_qualify_adj)*100) %>% st_drop_geometry()
 
-#WRITE TO ACP DASHBOARD FOLDER - this is only Benton cities data, not full zip code dataset  (cannot have geometry field in ACP_Benton to write to xlsx)
-#xlsx::write.xlsx(file ="G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "BentonCitiesData", x = ACP_Benton, append = TRUE, colNames = TRUE)
-#addWorksheet(file ="G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx",)
+
+# #join with us zip-geography dataframe and write to the geodatabase to check in arcgis
+# ACPzipBenton <- usZIP %>% left_join(y = acp.serviceBenton2, by = c("ZCTA5" = "zipcode"))
+# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipStateCD_8may2023", data = ACP_ZipStateCD_geo)
+
+
+# #write to git folder
+# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ZipStateCD_8may2023.shp", data = ACP_ZipStateCD_geo, overwrite = TRUE)
 
 
 ###edit this to try estimate from zip data
@@ -510,19 +367,133 @@ US_enrolled <- acp_national %>% subset(monthBYyear == max.date) %>% select(month
 US_HHEoE <- (US_enrolled$allHH/US_eligibleHH)*100
 
 
+```
 
+```{r crosswalk zip code to congressional district, echo=FALSE}
 
+#load zipcode to congressional district data from HUD crosswalk API
 
+library(httr)
+library(jsonlite)
 
-# #join with us zip-geography dataframe and write to the geodatabase to check in arcgis
-# ACPzipBenton <- usZIP %>% left_join(y = acp.serviceBenton2, by = c("ZCTA5" = "zipcode"))
-# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_ZipStateCD_24apr2023", data = ACP_ZipStateCD_geo)
+# Return a data frame of HUD USPS Crosswalk values
+
+url <- "https://www.huduser.gov/hudapi/public/usps?type=5&query=All"
+token <- Sys.getenv("HUD_API")
+headers <- c("Authorization" = paste("Bearer", token))
+
+response <- GET(url, add_headers(headers))
+
+if (status_code(response) != 200) {
+  print(paste("Failure, see status code:", status_code(response)))
+} else {
+  content <- content(response, "text")
+  df <- fromJSON(content)$data$results
+  print(df)
+}
+
+```
+
+```{r aggregate zipcode data to congressional district, echo = FALSE}
+
+#load congressional district -> zcta file (https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11820_zcta520_natl.txt)
+# cdTOzcta <- read.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/PUMS_5yr_2021/cdTOzcta.txt") %>% clean_names() %>%
+#   mutate(geoid_zcta5_20 = as.character(geoid_zcta5_20))
 # 
+# #make sure all zipcodes have leading zeros & convert to character
+# cdTOzcta$geoid_zcta5_20 <-  str_pad(cdTOzcta$geoid_zcta5_20, width = 5, side = c("left"), pad = 0)
 # 
-# 
+# #create spending summary of zcta claims data
+# acp_zip_spent2 <- acp_zip_spent %>% group_by(zipcode) %>% summarize(total_spent = sum(total_support)) %>% subset(zipcode != "00000")
+
+
+#import the list of zcta's for AK and HI
+ak.cd <- congressional_districts(cb = FALSE, state = 02) #load AK zcta's
+hi.cd <- congressional_districts(cb = FALSE, state = 15) #load HI zcta's
+
+
+#variables indicating the 1-person household 200% fpl value (p1xx), and the rate of change for each additional person (p2xx)
+#https://aspe.hhs.gov/sites/default/files/private/aspe-files/107166/2021-percentage-poverty-tool_0.pdf
+p148 <- 25760 
+p248 <- 9080 #2 person FPL - 1 person FPL
+p1ak <- 32180
+p2ak <- 11360
+p1hi <- 29640
+p2hi <- 10440
+
+
+#download household income data from acs
+HHincome_cd.1 <- get_acs(survey = "acs5", geography = "congressional district", table = "B19001", year = 2021, geometry = FALSE, moe_level = 95, state = NULL,cache_table = TRUE) %>% clean_names()  #download version without geography 
+
+#download household income data from acs
+totalHH_cd <- get_acs(survey = "acs5", geography = "congressional district", variables = "B19001_001", year = 2021, geometry = FALSE, moe_level = 95, state = NULL,cache_table = TRUE) %>% clean_names() %>% select(geoid,estimate,moe) %>% rename("total_hh" = "estimate") %>%  #download version without geography 
+mutate(total_hh = ifelse(total_hh == 0, moe, total_hh)) %>% select(-moe)
+  
+#download average household size from acs
+HH.size_cd <- get_acs(survey = "acs5", geography = "congressional district", variables = "B25010_001", year = 2021, geometry = FALSE, moe_level = 95, state = NULL,cache_table = TRUE) %>% clean_names() %>% select(geoid,estimate) %>% rename("hh.size" = "estimate")
+
+#combine acs income data with the max values of the income ranges, and average household size
+HHincome_cd.2 <- HHincome_cd.1  %>% select(-moe) %>% left_join(y = inc.max.vals, by = c("variable" = "var")) %>% 
+  mutate(region = if_else(geoid %in% ak.cd$GEOID, "AK",
+                if_else(geoid %in% hi.cd$GEOID, "HI", "L48"))) %>%
+  left_join(y = HH.size_cd, by = "geoid") %>%
+ mutate(hh.size = if_else(is.na(hh.size) == TRUE, 2.60, hh.size), #https://www.census.gov/quickfacts/fact/table/US/HCN010217 average HH size 2017-2021
+   l48.fpl = (p148 + (p248*(hh.size - 1))), #creates fpl based on l48, ak, and hi values, then selects the appropriate value for "fpl"
+                                     ak.fpl = (p1ak + (p2ak*(hh.size - 1))),
+                                     hi.fpl = (p1hi + (p2hi*(hh.size - 1))),
+                                     fpl = if_else(region == "L48", l48.fpl,
+                                                   if_else(region == "AK", ak.fpl,hi.fpl))) %>%
+  select(-ak.fpl, -hi.fpl, -l48.fpl, -region) %>%# removes the regional fpl values
+  mutate(elig_200 = if_else(fpl >= max_income, "y","n")) %>% #denotes whether this income record includes eligible households
+  subset(variable != "B19001_001") %>% 
+  subset(elig_200 == "y") %>% # retains only eligible income brackets and total # households
+  select(geoid, estimate, hh.size, fpl) %>% group_by(geoid) %>% 
+  summarize(hh_qualify = sum(estimate))
+
+
+#join with total # households
+HHincome_cd.3 <- HHincome_cd.2 %>% left_join(y = totalHH_cd, by = "geoid") %>%
+  mutate(HHqualify_perc = (hh_qualify/total_hh)*100) 
+
+#join zcta acp data
+ACP_zip2cd <- HHincome_cd.3  %>%
+  left_join(y = df[,c("zip","geoid","res_ratio")], by = "geoid") %>% 
+  left_join(y = acp_zip[,c("zipcode","enrollments")], by = c("zip" = "zipcode")) %>%
+  left_join(y = acp_zip_spent, by = c("zip" = "zipcode")) %>%
+  mutate(state_code = substr(geoid, 1, 2)) %>% left_join(y = fips_states, by = "state_code")
+  
+
+#summarize zip data within districts
+ACP_cd <- ACP_zip2cd %>% mutate(cd_enrolled = res_ratio*enrollments, cd_support = res_ratio*total_support) %>%
+  select(geoid, state, total_hh,hh_qualify, cd_enrolled,cd_support) %>%
+  group_by(geoid, state, total_hh, hh_qualify) %>%
+  dplyr::summarise(enrollments = sum(na.omit(cd_enrolled)), total_support = sum(na.omit(cd_support))) %>%
+  mutate(percent_eligible = (hh_qualify/total_hh)*100,
+         HHEoE = (enrollments/hh_qualify)*100,
+         enrollments = ifelse(is.na(enrollments) == TRUE, 0, enrollments),
+         total_support = ifelse(is.na(total_support) == TRUE, 0, total_support)) %>% ungroup()
+
+
+#load in legislature dataset from here: https://github.com/unitedstates/congress-legislators
+legislators.118 <- read.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/RawData/Congress/legislators-118.csv")
+#make sure all districts have leading zeros & convert to character
+legislators.118$district <-  str_pad(legislators.118$district, width = 2, side = c("left"), pad = 0)
+legislators.118$district <- as.character(legislators.118$district)
+legislators_188_simple <- legislators.118 %>% select(state, district, last_name, first_name, party, url, phone)
+
+ACP_cd_info <- ACP_cd %>% mutate(district = substr(geoid, 3,4)) %>% left_join(y = legislators_188_simple, by = c("state", "district")) #add this dataset to ACP_DASHBOARD_V2 (ACP_cd_infoSP gets used for map)
+
+#congressional district spatial
+cd <- congressional_districts(cb = FALSE, year = 2020) 
+
+ACP_cd_infoSP<- cd %>% left_join(y = ACP_cd_info, by = c("GEOID" = "geoid"))
+
+#write to arcgis to join with cd spatial & write as shp to data folder
+#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_CD8may23", data = ACP_cd_infoSP)
+
 # #write to git folder
-# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ZipStateCD_24apr2023.shp", data = ACP_ZipStateCD_geo, overwrite = TRUE)
-# #arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ZipBounds", data = usZIP)
+# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_CD8may23.shp", data = ACP_cd_infoSP, overwrite = TRUE)
+
 
 
 ```
@@ -566,7 +537,7 @@ US_eligibleHH60 <- US_eligibleHH*.60
 US_eligibleHH75 <- US_eligibleHH*.75
 
 #create index which represents months - currently predicting Mar 2023 and beyond
-acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(monthBYyear = 25:238) %>% rename(enrolled = fit)
+acp_ToPlot1 <- data.frame(acp_predict1$fit) %>% mutate(monthBYyear = 26:238) %>% rename(enrolled = fit)
 
 #create ACP-only vector (selects only months after switch from EBB to ACP)
 ACP.only <- acp_national %>% subset(monthBYyear >= 9) %>% select(monthBYyear,month, allHH) %>% rename(enrolled = allHH)
@@ -581,7 +552,7 @@ enroll.currentb <- enroll.current %>% bind_rows(enroll.current[rep(nrow(enroll.c
               mutate(month = month + seq(36))) %>% #creates a month sequence, to project out to 36 months
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent), #estimates monthly spent (based only on enrollment & cumulative spent)
                      perc.enrolled = (enrolled/US_eligibleHH)*100 , perc.used = (cum.spent/ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 52)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 53)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25/ebb.acp)*100, #adds in an extra 2.5% that Ry suggested to incorporate higher tribal value and device spending
          model = paste0(x, " Percent Enrollment" ," (",y," Million Households)"))
@@ -616,7 +587,7 @@ enroll35b <- enroll35 %>% bind_rows(enroll35[rep(nrow(enroll35), 36),] %>%
                      cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100, 
                      perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 52)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 53)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "35 Percent Enrollment (18.3 Million Households)")
 enroll35b$month <- format(enroll35b$month, format = "%b-%y")
@@ -647,7 +618,7 @@ enroll40b <- enroll40 %>% bind_rows(enroll40[rep(nrow(enroll40), 36),] %>%
                      cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100, 
                      perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 55)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 56)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "40 Percent Enrollment (20.8 Million Households)")
 enroll40b$month <- format(enroll40b$month, format = "%b-%y")
@@ -678,7 +649,7 @@ enroll45b <- enroll45 %>% bind_rows(enroll45[rep(nrow(enroll45), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 59)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 60)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "45 Percent Enrollment (23.5 Million Households)") 
 enroll45b$month <- format(enroll45b$month, format = "%b-%y")
@@ -707,7 +678,7 @@ enroll50b <- enroll50 %>% bind_rows(enroll50[rep(nrow(enroll50), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 63)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 64)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "50 Percent Enrollment (26.1 Million Households)") 
 enroll50b$month <- format(enroll50b$month, format = "%b-%y")
@@ -784,7 +755,6 @@ plot <- ggplot(modeldata, aes(x = m.seq, y = p, group=model)) +
 
 acpTESTplot <- plotly::ggplotly(plot) #converts plot to interactive version
 
-#xlsx::write.xlsx("G:/My Drive/ACPdashboard/ACP_DASHBOARD.xlsx", sheetName = "ModelDataB", x = modeldata, append = TRUE)
 
 #write.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_ModelData.csv", x = modeldata)
 ```
@@ -806,19 +776,19 @@ writeData(wb, "ModelData", modeldata)
 
 #load in zipcode data
 addWorksheet(wb, "EnrollByZipcode")
-zipdata <- ACP_ZipStateCD %>% st_drop_geometry() %>% subset(is.na(enrollments) == FALSE)
-writeData(wb, "EnrollByZipcode", zipdata)
+writeData(wb, "EnrollByZipcode", acp.service)
 
 #congressional data
 addWorksheet(wb, "EnrollByCD")
-writeData(wb, "EnrollByCD", ACP_congdist)
+writeData(wb, "EnrollByCD", ACP_cd_info)
 
 saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_DASHBOARD_V2.xlsx",overwrite = TRUE)
 
 #write zipcode shapefile
-arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_ZipData_24apr.shp", data = ACP_ZipStateCD_geo, overwrite = TRUE) #may need to edit in future to ACP_ZipStateCD_geo
+acp.zip.sp <- usZIP[,c("GEOID20", "geometry")] %>% left_join(y = acp.service, by = c("GEOID20" = "zcta"))
+arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_ZipData_8may.shp", data = acp.zip.sp, overwrite = TRUE) #may need to edit in future to ACP_ZipStateCD_geo
 
-
+total_support <- sum(na.omit(claims22_23$total_support))
 
 #write state boundary shapefile
 #states <- arc.open("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/USA_StateBoundaries.shp") %>% arc.select() %>%
@@ -827,11 +797,11 @@ arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Aff
 
 ```{r create workbook pineapple}
 
-HHincome_state.3b <- HHincome_state.3 %>% mutate(estimated_spent = HH_24apr23*30*1.025) %>% 
+HHincome_state.3b <- HHincome_state.3 %>% mutate(estimated_spent = HH_8may23*30*1.025) %>% 
    rename("perc_eligible" = "HH_eligiblePUMS", "perc_EoE" = "HHEoE_PUMSperc") %>%
   select(-HHqualify, -HHqualify_perc, -HHEoE_perc) 
 
-wb <- loadWorkbook("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_24apr23.xlsx")
+wb <- loadWorkbook("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_8may23.xlsx")
 
 #load in state data
 addWorksheet(wb, "EnrollByState")
@@ -840,13 +810,13 @@ writeData(wb, "EnrollByState", HHincome_state.3b)
 
 #congressional data
 addWorksheet(wb, "EnrollByCD")
-writeData(wb, "EnrollByCD", ACP_congdist)
+writeData(wb, "EnrollByCD", ACP_cd_info)
 
-saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_24apr23.xlsx",overwrite = TRUE)
+
+saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_8may23.xlsx",overwrite = TRUE)
 
 
 
 
 ```
 
-```
