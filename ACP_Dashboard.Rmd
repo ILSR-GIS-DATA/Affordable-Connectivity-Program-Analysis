@@ -94,7 +94,7 @@ st_eligible$ST <-  str_pad(st_eligible$ST, width = 2, side = c("left"), pad = 0)
 ```{r Load & Edit Enrollment Data, echo=FALSE, cache=TRUE, cache.lazy=FALSE, results='hide'}
 #load ACP enrollment data from spreadsheet (manually updated each week)
 #edit the variable name to reflect the most recent data update
-ACP10jul <- "C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACPWeeklyEnroll.xlsx"
+ACP24jul <- "C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACPWeeklyEnroll.xlsx"
 
 data(fips_codes) #creates dataframe of all state and county fips codes
 fips_states <- fips_codes %>% select(state_name,state,state_code) 
@@ -128,8 +128,8 @@ acp_zip$zipcode <- as.character(acp_zip$zipcode)
 
 
 ##UPDATE THIS EVERY TIME
-ACPstates <-read_excel(path = ACP10jul, sheet = 4, col_names = TRUE) %>%
-  select(State,HH_10jul23) %>% 
+ACPstates <-read_excel(path = ACP24jul, sheet = 4, col_names = TRUE) %>%
+  select(State,HH_24jul23) %>% 
   left_join(y = fips_states, by = c("State" = "state_name"))
 
 #-------------------------------------------------------
@@ -151,7 +151,7 @@ usZIP <- zctas(cb = TRUE, year = 2020)
 
 #-------------------------------------------------------
 #NATIONAL DATA
-acp_national <-read_excel(path = ACP10jul, sheet = 2, col_names = TRUE) %>% clean_names() %>%
+acp_national <-read_excel(path = ACP24jul, sheet = 2, col_names = TRUE) %>% clean_names() %>%
   #summarize data by year and month - total households, broken down into tribal and non-tribal
   group_by(month(date), year(date)) %>% summarize(allHH = max(total_households), ntHH = max(non_tribal), tHH = max(tribal)) %>% 
   #estimate how much of the fund has been used so far - using tribal and non-tribal HH enrollment
@@ -221,13 +221,13 @@ HHincome_state.3 <- HHincome_state.2 %>% left_join(y = totalHH_state, by = "geoi
   left_join(y = ACPstates, by = c("geoid" = "state_code")) %>% #join with state-weekly enrollment data
   left_join(y = st_eligible, by = c("geoid" = "ST")) %>% #join with PUMS-derived eligibility
   mutate(HHqualify_perc = (hh_qualify/total_hh)*100, 
-  HHEoE_perc = (HH_10jul23/hh_qualify)*100, ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
+  HHEoE_perc = (HH_24jul23/hh_qualify)*100, ###NEED TO EDIT THIS ROW ANY TIME STATE DATA IS UPDATED###
   HH_eligiblePUMS = (hh_eligible/total_hh)*100,
-  HHEoE_PUMSperc = (HH_10jul23/hh_eligible)*100,
+  HHEoE_PUMSperc = (HH_24jul23/hh_eligible)*100,
   adj_factor = HHEoE_perc/HHEoE_PUMSperc) %>% 
   rename("totalHH"="total_hh", "HHqualify"="hh_qualify") %>%
   select(-name, -state) %>%
-  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_10jul23, HHEoE_perc,hh_eligible, HH_eligiblePUMS, HHEoE_PUMSperc, adj_factor) %>% 
+  select(geoid, State, totalHH, HHqualify, HHqualify_perc, HH_24jul23, HHEoE_perc,hh_eligible, HH_eligiblePUMS, HHEoE_PUMSperc, adj_factor) %>% 
   #subset(geoid != "69" & geoid != "66" & geoid != "60" & geoid != "72" & geoid != "78") %>%
   rename("state" = "State", "hh_PUMSeligible" = "hh_eligible") %>%
   ungroup() 
@@ -348,7 +348,7 @@ ACP_Benton_sp <- usZIP %>% right_join(y = acp.service, by = c("GEOID20" = "zcta"
 
 
 # #write to git folder
-# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_Benton_10jul2023.shp", data = ACP_Benton_sp, overwrite = TRUE)
+# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_Benton_24jul2023.shp", data = ACP_Benton_sp, overwrite = TRUE)
 
 
 ###edit this to try estimate from zip data
@@ -544,10 +544,10 @@ ACP_cd_info <- legislators_188_simple %>% left_join(y = ACP_cd, by = c("state", 
 
 
 #write to arcgis to join with cd spatial & write as shp to data folder (don't use tigris, unless it changes to 118)
-#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_CD10jul23", data = ACP_cd_info, overwrite = TRUE)
+#arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/ACP/ACP.gdb/ACP_CD24jul23", data = ACP_cd_info, overwrite = TRUE)
 
 # #write to git folder
-# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_CD10jul23.shp", data = ACP_cd_info, overwrite = TRUE)
+# arc.write("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_CD24jul23.shp", data = ACP_cd_info, overwrite = TRUE)
 
 #write this as individual file for github
 #write.csv("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_DASHBOARD_EnrollByCD.csv", x = ACP_cd_info)
@@ -762,7 +762,7 @@ enroll60b <- enroll60 %>% bind_rows(enroll60[rep(nrow(enroll60), 36),] %>%
               mutate(month = month + seq(36))) %>%
               mutate(month.spent = enrolled*30, cum.spent = cumsum(month.spent),
                      perc.enrolled = (enrolled/US_eligibleHH)*100 ,perc.used = (cum.spent /ebb.acp)*100,
-                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 73)) %>%
+                     month = seq(as.Date("2022-01-01"), by = "month",length.out = 72)) %>%
   select(month, enrolled, lwr, upr,perc.enrolled,month.spent,cum.spent, perc.used) %>%
   mutate(month.spent25 = month.spent * 1.025,cum.spent25 = cumsum(month.spent25), perc.used25 = (cum.spent25 /ebb.acp)*100, model = "60 Percent Enrollment (31.3 Million Households)") 
 enroll60b$month <- format(enroll60b$month, format = "%b-%y")
@@ -842,7 +842,7 @@ saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resourc
 
 #write zipcode shapefile
 acp.zip.sp <- usZIP[,c("GEOID20", "geometry")] %>% left_join(y = acp.service, by = c("GEOID20" = "zcta"))
-arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_ZipData_10jul.shp", data = acp.zip.sp, overwrite = TRUE) #may need to edit in future to ACP_ZipStateCD_geo
+arc.write("C:/Users/chris/Dropbox (ILSR)/CBN Team Folder/Resources/Resources/Affordable Connectivity Program/Dashboard Data/ACP_ZipData_24jul.shp", data = acp.zip.sp, overwrite = TRUE) #may need to edit in future to ACP_ZipStateCD_geo
 
 total_support <- sum(na.omit(claims22_23$total_support))
 
@@ -853,11 +853,11 @@ total_support <- sum(na.omit(claims22_23$total_support))
 
 ```{r create workbook pineapple}
 
-HHincome_state.3b <- HHincome_state.3 %>% mutate(estimated_spent = HH_10jul23*30*1.025) %>% 
+HHincome_state.3b <- HHincome_state.3 %>% mutate(estimated_spent = HH_24jul23*30*1.025) %>% 
    rename("perc_eligible" = "HH_eligiblePUMS", "perc_EoE" = "HHEoE_PUMSperc") %>%
   select(-HHqualify, -HHqualify_perc, -HHEoE_perc) 
 
-wb <- loadWorkbook("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_10jul23.xlsx")
+wb <- loadWorkbook("C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_24jul23.xlsx")
 
 #load in state data
 addWorksheet(wb, "EnrollByState")
@@ -869,7 +869,7 @@ addWorksheet(wb, "EnrollByCD")
 writeData(wb, "EnrollByCD", ACP_cd_info)
 
 
-saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_10jul23.xlsx",overwrite = TRUE)
+saveWorkbook(wb,"C:/Users/chris/Dropbox (ILSR)/Christine Parker/Projects/CBN InfoMap Requests/BroadbandingFunds/ACP/Affordable-Connectivity-Program-Analysis/ACP_QuickFactsData_24jul23.xlsx",overwrite = TRUE)
 
 
 
