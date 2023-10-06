@@ -1,0 +1,69 @@
+---
+title: "ACP_Tracker_Scraper"
+author: "Christine Parker"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+#https://r4ds.hadley.nz/webscraping
+library(tidyverse)
+library(rvest)
+library(httr)
+library(XML)
+library(readxl)
+library(janitor)
+
+```
+
+```{r load ACP data, echo = FALSE}
+
+html <- read_html("https://www.usac.org/about/affordable-connectivity-program/acp-enrollment-and-claims-tracker/")
+html
+
+hyperlinks <- html %>% html_elements("a")
+tracker.tables <- html %>%  html_table()
+
+#extract and reformat national claims data table
+national_claimed <- tracker.tables[[2]]
+names(national_claimed) <- national_claimed[1,]
+national_claimed <- national_claimed[-1,]
+
+#extract and reformat national enrollment data table (updated weekly)
+national_enrolled <- tracker.tables[[3]]
+names(national_enrolled) <- national_enrolled[1,]
+national_enrolled <- national_enrolled[-1,] 
+names(national_enrolled) <- c("date", "total_households", "non_tribal", "tribal")
+
+#extract and reformat state enrollment data table (updated weekly)
+state_enrolled <- tracker.tables[[4]]
+names(state_enrolled) <- state_enrolled[1,]
+state_enrolled <- state_enrolled[-1,] 
+names(state_enrolled) <- c("state", "total_households")
+
+#https://www.geeksforgeeks.org/extract-all-the-urls-from-the-webpage-using-r-language/
+#https://readxl.tidyverse.org/articles/multiple-header-rows.html
+
+#load the Claims-By-Geography dataset (updated monthly)
+url<- "https://www.usac.org/wp-content/uploads/about/documents/acp/ACP-Funding-Summary-by-Geography.xlsx"
+
+GET(url, write_disk(tf <- tempfile(fileext = ".xlsx")))
+state_claims <- read_excel(tf, sheet = 1)
+names(state_claims) <- paste(names(state_claims), state_claims[1, ], sep = "_")
+state_claims <- state_claims[-1,] %>% clean_names() %>% subset(x1_state_territory != "Total")
+total_state_claims <- state_claims[,1:2] %>% 
+  ###this next line needs to be edited to match recent month, unless can automate this somehow
+  rename( "state_territory" = "x1_state_territory","total_support" =  "total_claim_amount_jan_2022_aug_2023_na" ) 
+
+district_claims <- read_excel(tf, sheet = 2)
+names(district_claims) <- paste(names(district_claims), district_claims[1, ], sep = "_")
+district_claims <- district_claims[-1,] %>% clean_names() %>% subset(x1_state != "Total" & str_detect(x1_state,"Note") == FALSE)
+district_claims <- district_claims[,1:3] %>% 
+  ###this next line needs to be edited to match recent month, unless can automate this somehow
+  rename( "state" = "x1_state","cd" = "x2_cd","total_support" =  "total_claim_amount_jan_2022_aug_2023_na" ) 
+
+
+county_claims <- read_excel(tf,sheet = 3)
+zip_claims <- read_excel(tf, sheet = 4)
+```
